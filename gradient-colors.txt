@@ -1,0 +1,7 @@
+from-blue-500 to-purple-500 (Blue to Purple)
+
+from-blue-400 to-blue-600 (Light to Dark Blue)
+
+from-cyan-500 to-blue-500 (Cyan to Blue)
+
+from-indigo-500 to-purple-500 (Indigo to Purple)
