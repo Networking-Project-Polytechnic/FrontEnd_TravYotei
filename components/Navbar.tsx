@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 import Image from 'next/image'
-import travlogo from '../../public/travlogo.png'
+import travlogo from '../public/travlogo.png'
 import Link from 'next/link'
 import Button from './Button'
 
