@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { FaUser, FaLock, FaFacebookF, FaTwitter, FaGoogle, FaLinkedinIn } from 'react-icons/fa';
 import { login } from '@/lib/api';
+import { FaXTwitter } from 'react-icons/fa6';
 
 interface LoginFormProps {
   switchToSignup: () => void;
@@ -102,7 +103,7 @@ export default function LoginForm({ switchToSignup }: LoginFormProps) {
             <FaFacebookF className="text-lg" />
         </a>
         <a href="#" className="w-11 h-11 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-            <FaTwitter className="text-lg" />
+            <FaXTwitter className="text-lg" />
         </a>
         <a href="#" className="w-11 h-11 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
             <FaGoogle className="text-lg" />

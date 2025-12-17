@@ -36,6 +36,12 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     setLoading(true);
 
     try {
+      // basic client-side validation
+      if (!formData.phoneNumber) {
+        setError('Please provide a phone number.');
+        return;
+      }
+
       const response = await signup(formData);
       setSuccess('Registration successful! You can now login.');
       console.log('Signup successful:', response);

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { FaFacebookF, FaGoogle, FaLinkedinIn, FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt, FaIdCard } from 'react-icons/fa';
 import { signup_agency } from '@/lib/api';
-import { FaX } from 'react-icons/fa6';
+import { FaXTwitter } from 'react-icons/fa6';
 
 interface SignupFormProps {
   switchToLogin: () => void;
@@ -36,8 +36,20 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     setError('');
     setSuccess('');
     setLoading(true);
-
+    
     try {
+      // basic client-side validation
+      if (!formData.phoneNumber) {
+        setError('Please provide a phone number.');
+        return;
+      }
+
+      if (!formData.licenseNumber) {
+        setError('Please enter your license number.');
+        setLoading(false);
+        return;
+      }
+
       const response = await signup_agency(formData);
       setSuccess('Registration successful! You can now login.');
       console.log('Signup successful:', response);
@@ -245,7 +257,7 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
           <FaGoogle className="text-xs" />
         </a>
         <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-          <FaX className="text-xs" />
+          <FaXTwitter className="text-xs" />
         </a>
       </div>
     </form>
