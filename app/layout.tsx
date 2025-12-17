@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import NavbarWrapper from "./_components/NavbarWrapper";
+import NavbarWrapper from "../components/NavbarWrapper";
 
 
 // Pages where navbar should be hidden

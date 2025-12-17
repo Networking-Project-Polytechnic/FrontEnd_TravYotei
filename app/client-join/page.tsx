@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import LoginForm from '../_components/LoginForm';
-import SignupForm from '../_components/SignupForm';
+import LoginForm from '../../components/LoginForm';
+import SignupForm from '../../components/SignupForm';
 
 export default function Home() {
   const [isSignUpMode, setIsSignUpMode] = useState(true);
