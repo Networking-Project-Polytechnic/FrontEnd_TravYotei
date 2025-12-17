@@ -29,8 +29,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        {/* This is a client component that handles navbar logic */}
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <NavbarWrapper />
         {children}
       </body>

@@ -6,7 +6,9 @@ import Navbar from './Navbar';
 // Routes where navbar should be hidden
 const hideNavbarRoutes = [
   '/client-join', 
-  '/agency-join'
+  '/agency-join',
+  '/Dashboard',
+  '/agency/create-package'
 ];
 
 export default function NavbarWrapper() {
