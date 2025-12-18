@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "../components/Navbar";
+import NavbarWrapper from "../components/NavbarWrapper";
+
+
+// Pages where navbar should be hidden
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,13 +24,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">      
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-      <Navbar />
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <NavbarWrapper />
         {children}
       </body>
     </html>
