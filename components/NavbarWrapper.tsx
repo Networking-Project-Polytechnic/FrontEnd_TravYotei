@@ -8,7 +8,8 @@ const hideNavbarRoutes = [
   '/client-join', 
   '/agency-join',
   '/Dashboard',
-  '/agency/create-package'
+  '/agency/create-package',
+  '/'
 ];
 
 export default function NavbarWrapper() {
