@@ -37,25 +37,49 @@ export function LocationManagement() {
     country: "",
   })
 
-  useEffect(() => {
-    fetchLocations()
-  }, [])
-
-  const fetchLocations = async () => {
+  // DUMMY DATA: Using mock location data for development/testing
+  const fetchLocations = () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/locations`)
-      if (!response.ok) throw new Error("Failed to fetch locations")
-      const data = await response.json()
-      setLocations(data)
+      const mockLocations: Location[] = [
+        {
+          location_id: "1",
+          city_name: "Nairobi",
+          region: "Nairobi County",
+          country: "Kenya",
+        },
+        {
+          location_id: "2",
+          city_name: "Mombasa",
+          region: "Coastal County",
+          country: "Kenya",
+        },
+        {
+          location_id: "3",
+          city_name: "Kisumu",
+          region: "Nyanza Region",
+          country: "Kenya",
+        },
+        {
+          location_id: "4",
+          city_name: "Nakuru",
+          region: "Rift Valley",
+          country: "Kenya",
+        },
+      ]
+      setLocations(mockLocations)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching locations:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchLocations()
+  }, [])
 
   const resetForm = () => {
     setFormData({ cityName: "", region: "", country: "" })

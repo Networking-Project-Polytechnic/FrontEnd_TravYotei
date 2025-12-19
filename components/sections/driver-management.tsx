@@ -40,25 +40,49 @@ export function DriverManagement() {
     licenseExpiry: "",
   })
 
-  useEffect(() => {
-    fetchDrivers()
-  }, [])
-
-  const fetchDrivers = async () => {
+  // DUMMY DATA: Using mock driver data for development/testing
+  const fetchDrivers = () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/drivers`)
-      if (!response.ok) throw new Error("Failed to fetch drivers")
-      const data = await response.json()
-      setDrivers(data)
+      const mockDrivers: Driver[] = [
+        {
+          driver_id: "1",
+          full_name: "John Kariuki",
+          phone: "+254712345678",
+          license_number: "DL-2024001",
+          license_expiry_date: "2025-12-31",
+          active: true,
+        },
+        {
+          driver_id: "2",
+          full_name: "Jane Mwangi",
+          phone: "+254723456789",
+          license_number: "DL-2024002",
+          license_expiry_date: "2026-06-30",
+          active: true,
+        },
+        {
+          driver_id: "3",
+          full_name: "Samuel Kipchoge",
+          phone: "+254734567890",
+          license_number: "DL-2023005",
+          license_expiry_date: "2024-08-15",
+          active: false,
+        },
+      ]
+      setDrivers(mockDrivers)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching drivers:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchDrivers()
+  }, [])
 
   const resetForm = () => {
     setFormData({ fullName: "", phone: "", licenseNumber: "", licenseExpiry: "" })

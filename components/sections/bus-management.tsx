@@ -77,43 +77,77 @@ export function BusManagement() {
     amenities: [] as string[],
   })
 
-  useEffect(() => {
-    fetchAll()
-  }, [])
-
-  const fetchAll = async () => {
+  // DUMMY DATA: Using mock data for development/testing
+  const fetchAll = () => {
     try {
       setLoading(true)
-      const [busesRes, makesRes, modelsRes, manufacturersRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/buses`),
-        fetch(`${API_BASE_URL}/bus-makes`),
-        fetch(`${API_BASE_URL}/bus-models`),
-        fetch(`${API_BASE_URL}/bus-manufacturers`),
-      ])
+      // Mock bus makes data
+      const mockMakes: BusMake[] = [
+        { bus_make_id: "1", make_name: "Volvo" },
+        { bus_make_id: "2", make_name: "Mercedes" },
+        { bus_make_id: "3", make_name: "Scania" },
+      ]
 
-      if (!busesRes.ok || !makesRes.ok || !modelsRes.ok || !manufacturersRes.ok) {
-        throw new Error("Failed to fetch data")
-      }
+      // Mock bus models data
+      const mockModels: BusModel[] = [
+        { bus_model_id: "1", model_name: "B11R" },
+        { bus_model_id: "2", model_name: "Sprinter" },
+        { bus_model_id: "3", model_name: "K440" },
+      ]
 
-      const [busesData, makesData, modelsData, manufacturersData] = await Promise.all([
-        busesRes.json(),
-        makesRes.json(),
-        modelsRes.json(),
-        manufacturersRes.json(),
-      ])
+      // Mock bus manufacturers data
+      const mockManufacturers: BusManufacturer[] = [
+        { bus_manufacturer_id: "1", manufacturer_name: "Volvo Buses" },
+        { bus_manufacturer_id: "2", manufacturer_name: "Daimler" },
+        { bus_manufacturer_id: "3", manufacturer_name: "Scania AB" },
+      ]
 
-      setBuses(busesData)
-      setMakes(makesData)
-      setModels(modelsData)
-      setManufacturers(manufacturersData)
+      // Mock buses data
+      const mockBuses: Bus[] = [
+        {
+          bus_id: "1",
+          registration_number: "KE-100-ABC",
+          seat_count: 50,
+          mileage_km: 15000,
+          in_service: true,
+          bus_make: mockMakes[0],
+          bus_model: mockModels[0],
+          bus_manufacturer: mockManufacturers[0],
+          fuel_type: { fuel_type_name: "DIESEL" },
+          transmission_type: { type_name: "MANUAL" },
+          amenities: ["AC", "WIFI", "USB_CHARGING"],
+        },
+        {
+          bus_id: "2",
+          registration_number: "KE-101-XYZ",
+          seat_count: 45,
+          mileage_km: 8500,
+          in_service: true,
+          bus_make: mockMakes[1],
+          bus_model: mockModels[1],
+          bus_manufacturer: mockManufacturers[1],
+          fuel_type: { fuel_type_name: "DIESEL" },
+          transmission_type: { type_name: "AUTOMATIC" },
+          amenities: ["AC", "TV", "WC", "RECLINING_SEATS"],
+        },
+      ]
+
+      setBuses(mockBuses)
+      setMakes(mockMakes)
+      setModels(mockModels)
+      setManufacturers(mockManufacturers)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching data:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchAll()
+  }, [])
 
   const resetForm = () => {
     setFormData({

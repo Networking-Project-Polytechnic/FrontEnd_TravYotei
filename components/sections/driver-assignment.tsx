@@ -54,40 +54,52 @@ export function DriverAssignment() {
     assignedFrom: "",
   })
 
-  useEffect(() => {
-    fetchAllData()
-  }, [])
-
-  const fetchAllData = async () => {
+  // DUMMY DATA: Using mock data for development/testing
+  const fetchAllData = () => {
     try {
       setLoading(true)
-      const [assignmentsRes, busesRes, driversRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/driver-assignments`),
-        fetch(`${API_BASE_URL}/buses`),
-        fetch(`${API_BASE_URL}/drivers`),
-      ])
+      const mockBuses: Bus[] = [
+        { bus_id: "1", registration_number: "KE-100-ABC" },
+        { bus_id: "2", registration_number: "KE-101-XYZ" },
+      ]
 
-      if (!assignmentsRes.ok || !busesRes.ok || !driversRes.ok) {
-        throw new Error("Failed to fetch data")
-      }
+      const mockDrivers: Driver[] = [
+        { driver_id: "1", full_name: "John Kariuki" },
+        { driver_id: "2", full_name: "Jane Mwangi" },
+      ]
 
-      const [assignmentsData, busesData, driversData] = await Promise.all([
-        assignmentsRes.json(),
-        busesRes.json(),
-        driversRes.json(),
-      ])
+      const mockAssignments: Assignment[] = [
+        {
+          assignment_id: "1",
+          assigned_from: "2024-01-01",
+          assigned_to: null,
+          bus: mockBuses[0],
+          driver: mockDrivers[0],
+        },
+        {
+          assignment_id: "2",
+          assigned_from: "2024-02-01",
+          assigned_to: "2024-02-15",
+          bus: mockBuses[1],
+          driver: mockDrivers[1],
+        },
+      ]
 
-      setAssignments(assignmentsData)
-      setBuses(busesData)
-      setDrivers(driversData)
+      setAssignments(mockAssignments)
+      setBuses(mockBuses)
+      setDrivers(mockDrivers)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching data:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchAllData()
+  }, [])
 
   const resetForm = () => {
     setFormData({

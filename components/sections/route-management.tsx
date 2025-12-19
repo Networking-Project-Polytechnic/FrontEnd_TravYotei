@@ -46,37 +46,59 @@ export function RouteManagement() {
     duration: "",
   })
 
-  useEffect(() => {
-    fetchRoutes()
-    fetchLocations()
-  }, [])
-
-  const fetchRoutes = async () => {
+  // DUMMY DATA: Using mock data for development/testing
+  const fetchRoutes = () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/routes`)
-      if (!response.ok) throw new Error("Failed to fetch routes")
-      const data = await response.json()
-      setRoutes(data)
+      const mockLocations: Location[] = [
+        { location_id: "1", city_name: "Nairobi" },
+        { location_id: "2", city_name: "Mombasa" },
+        { location_id: "3", city_name: "Kisumu" },
+      ]
+
+      const mockRoutes: Route[] = [
+        {
+          route_id: "1",
+          origin_city: "Nairobi",
+          destination_city: "Mombasa",
+          distance_km: 480,
+          estimated_duration_minutes: 540,
+        },
+        {
+          route_id: "2",
+          origin_city: "Nairobi",
+          destination_city: "Kisumu",
+          distance_km: 380,
+          estimated_duration_minutes: 480,
+        },
+        {
+          route_id: "3",
+          origin_city: "Mombasa",
+          destination_city: "Kisumu",
+          distance_km: 600,
+          estimated_duration_minutes: 720,
+        },
+      ]
+
+      setRoutes(mockRoutes)
+      setLocations(mockLocations)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching routes:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchLocations = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/locations`)
-      if (!response.ok) throw new Error("Failed to fetch locations")
-      const data = await response.json()
-      setLocations(data)
-    } catch (err) {
-      console.error("[v0] Error fetching locations:", err)
-    }
+  const fetchLocations = () => {
+    // Locations are already loaded in fetchRoutes
   }
+
+  useEffect(() => {
+    fetchRoutes()
+    fetchLocations()
+  }, [])
 
   const resetForm = () => {
     setFormData({ originCity: "", destinationCity: "", distance: "", duration: "" })
