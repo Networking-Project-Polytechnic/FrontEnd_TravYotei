@@ -5,6 +5,7 @@ import NavbarWrapper from "../components/NavbarWrapper";
 import { ThemeProvider } from "@/components/theme-provider";
 import PageTransition from "@/components/PageTransition";
 // import { AuthProvider } from "@/context/AuthContext";
+// import { AuthProvider } from "@/context/AuthContext";
 
 
 // Pages where navbar should be hidden
@@ -46,6 +47,11 @@ export default function RootLayout({
             {children}
           </PageTransition>
         </ThemeProvider>
+        {/* <AuthProvider>
+          <NavbarWrapper />
+          {children}
+        </AuthProvider> */}
+        
       </body>
     </html>
   );
