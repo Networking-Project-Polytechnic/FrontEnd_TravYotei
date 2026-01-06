@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, CheckCircle, XCircle } from "lucide-react"
-import { API_BASE_URL } from "@/lib/config"
+import { createDriver, updateDriver, deleteDriver } from "@/lib/api"
 
 interface Driver {
   driver_id: string
@@ -39,26 +39,57 @@ export function DriverManagement() {
     licenseNumber: "",
     licenseExpiry: "",
   })
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchDrivers()
-  }, [])
+  const handlePhotoChange = (file: File | null) => {
+    setPhoto(file)
+    setPhotoPreview(file ? URL.createObjectURL(file) : null)
+  }
 
-  const fetchDrivers = async () => {
+  // DUMMY DATA: Using mock driver data for development/testing
+  const fetchDrivers = () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/drivers`)
-      if (!response.ok) throw new Error("Failed to fetch drivers")
-      const data = await response.json()
-      setDrivers(data)
+      const mockDrivers: Driver[] = [
+        {
+          driver_id: "1",
+          full_name: "John Kariuki",
+          phone: "+254712345678",
+          license_number: "DL-2024001",
+          license_expiry_date: "2025-12-31",
+          active: true,
+        },
+        {
+          driver_id: "2",
+          full_name: "Jane Mwangi",
+          phone: "+254723456789",
+          license_number: "DL-2024002",
+          license_expiry_date: "2026-06-30",
+          active: true,
+        },
+        {
+          driver_id: "3",
+          full_name: "Samuel Kipchoge",
+          phone: "+254734567890",
+          license_number: "DL-2023005",
+          license_expiry_date: "2024-08-15",
+          active: false,
+        },
+      ]
+      setDrivers(mockDrivers)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching drivers:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchDrivers()
+  }, [])
 
   const resetForm = () => {
     setFormData({ fullName: "", phone: "", licenseNumber: "", licenseExpiry: "" })
@@ -92,24 +123,16 @@ export function DriverManagement() {
       }
 
       if (editingId) {
-        const response = await fetch(`${API_BASE_URL}/drivers/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to update driver")
+        await updateDriver(editingId, payload, photo || undefined)
       } else {
-        const response = await fetch(`${API_BASE_URL}/drivers`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to create driver")
+        await createDriver(payload, photo || undefined)
       }
 
       await fetchDrivers()
       setOpen(false)
       resetForm()
+      setPhoto(null)
+      setPhotoPreview(null)
     } catch (err) {
       console.error("[v0] Error saving driver:", err)
       alert("Failed to save driver. Please try again.")
@@ -120,10 +143,8 @@ export function DriverManagement() {
     if (!confirm("Are you sure you want to delete this driver?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/drivers/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("Failed to delete driver")
+      const ok = await deleteDriver(id)
+      if (!ok) throw new Error('Failed to delete driver')
       await fetchDrivers()
     } catch (err) {
       console.error("[v0] Error deleting driver:", err)
@@ -210,6 +231,20 @@ export function DriverManagement() {
                   onChange={(e) => setFormData({ ...formData, licenseExpiry: e.target.value })}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Photo</Label>
+                <input
+                  id="driverPhoto"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handlePhotoChange(e.target.files ? e.target.files[0] : null)}
+                />
+                {photoPreview && (
+                  <img src={photoPreview} alt="photo-preview" className="w-20 h-20 object-cover rounded mt-2" />
+                )}
+              </div>
+
               <Button type="submit" className="w-full">
                 {editingId ? "Update Driver" : "Add Driver"}
               </Button>

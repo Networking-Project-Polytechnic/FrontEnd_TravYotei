@@ -56,37 +56,67 @@ export function FareManagement() {
     validTo: "",
   })
 
-  useEffect(() => {
-    fetchFares()
-    fetchRoutes()
-  }, [])
-
-  const fetchFares = async () => {
+  // DUMMY DATA: Using mock data for development/testing
+  const fetchFares = () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/fares`)
-      if (!response.ok) throw new Error("Failed to fetch fares")
-      const data = await response.json()
-      setFares(data)
+      const mockRoutes: Route[] = [
+        { route_id: "1", origin_city: "Nairobi", destination_city: "Mombasa" },
+        { route_id: "2", origin_city: "Nairobi", destination_city: "Kisumu" },
+      ]
+
+      const mockFares: Fare[] = [
+        {
+          fare_id: "1",
+          route_id: "1",
+          bus_class: "STANDARD",
+          price: 1500,
+          currency: "KES",
+          valid_from: "2024-01-01",
+          valid_to: null,
+          route: mockRoutes[0],
+        },
+        {
+          fare_id: "2",
+          route_id: "1",
+          bus_class: "VIP",
+          price: 2500,
+          currency: "KES",
+          valid_from: "2024-01-01",
+          valid_to: null,
+          route: mockRoutes[0],
+        },
+        {
+          fare_id: "3",
+          route_id: "2",
+          bus_class: "STANDARD",
+          price: 1200,
+          currency: "KES",
+          valid_from: "2024-01-01",
+          valid_to: null,
+          route: mockRoutes[1],
+        },
+      ]
+
+      setFares(mockFares)
+      setRoutes(mockRoutes)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching fares:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchRoutes = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/routes`)
-      if (!response.ok) throw new Error("Failed to fetch routes")
-      const data = await response.json()
-      setRoutes(data)
-    } catch (err) {
-      console.error("[v0] Error fetching routes:", err)
-    }
+  const fetchRoutes = () => {
+    // Routes are already loaded in fetchFares
   }
+
+  useEffect(() => {
+    fetchFares()
+    fetchRoutes()
+  }, [])
 
   const resetForm = () => {
     setFormData({

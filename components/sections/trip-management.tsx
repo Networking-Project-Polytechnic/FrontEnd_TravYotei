@@ -80,36 +80,62 @@ export function TripManagement() {
     status: "SCHEDULED",
   })
 
-  useEffect(() => {
-    fetchAllData()
-  }, [])
-
-  const fetchAllData = async () => {
+  // DUMMY DATA: Using mock data for development/testing
+  const fetchAllData = () => {
     try {
       setLoading(true)
-      const [tripsRes, routesRes, busesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/trips`),
-        fetch(`${API_BASE_URL}/routes`),
-        fetch(`${API_BASE_URL}/buses`),
-      ])
+      const mockRoutes: Route[] = [
+        { route_id: "1", origin_city: "Nairobi", destination_city: "Mombasa" },
+        { route_id: "2", origin_city: "Nairobi", destination_city: "Kisumu" },
+      ]
 
-      if (!tripsRes.ok || !routesRes.ok || !busesRes.ok) {
-        throw new Error("Failed to fetch data")
-      }
+      const mockBuses: Bus[] = [
+        { bus_id: "1", registration_number: "KE-100-ABC" },
+        { bus_id: "2", registration_number: "KE-101-XYZ" },
+      ]
 
-      const [tripsData, routesData, busesData] = await Promise.all([tripsRes.json(), routesRes.json(), busesRes.json()])
+      const mockTrips: Trip[] = [
+        {
+          trip_id: "1",
+          departure_time: "2024-01-15T08:00:00",
+          arrival_time: "2024-01-15T17:00:00",
+          status: "COMPLETED",
+          route: mockRoutes[0],
+          bus: mockBuses[0],
+        },
+        {
+          trip_id: "2",
+          departure_time: "2024-01-16T06:30:00",
+          arrival_time: null,
+          status: "IN_PROGRESS",
+          route: mockRoutes[0],
+          bus: mockBuses[1],
+        },
+        {
+          trip_id: "3",
+          departure_time: "2024-01-17T10:00:00",
+          arrival_time: null,
+          status: "SCHEDULED",
+          route: mockRoutes[1],
+          bus: mockBuses[0],
+        },
+      ]
 
-      setTrips(tripsData)
-      setRoutes(routesData)
-      setBuses(busesData)
+      setTrips(mockTrips)
+      setRoutes(mockRoutes)
+      setBuses(mockBuses)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching data:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchAllData()
+  }, [])
 
   const resetForm = () => {
     setFormData({

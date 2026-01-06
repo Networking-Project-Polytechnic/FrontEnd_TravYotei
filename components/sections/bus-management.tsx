@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, CheckCircle, XCircle } from "lucide-react"
-import { API_BASE_URL } from "@/lib/config"
+import { createBus, updateBus, deleteBus } from "@/lib/api"
 
 interface Bus {
   bus_id: string
@@ -76,44 +76,89 @@ export function BusManagement() {
     mileage: "",
     amenities: [] as string[],
   })
+  const [images, setImages] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
 
-  useEffect(() => {
-    fetchAll()
-  }, [])
+  // helper to set image previews
+  const handleImageChange = (files: FileList | null) => {
+    if (!files) return
+    const arr = Array.from(files)
+    setImages(arr)
+    const previews = arr.map((f) => URL.createObjectURL(f))
+    setImagePreviews(previews)
+  }
 
-  const fetchAll = async () => {
+  // DUMMY DATA: Using mock data for development/testing
+  const fetchAll = () => {
     try {
       setLoading(true)
-      const [busesRes, makesRes, modelsRes, manufacturersRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/buses`),
-        fetch(`${API_BASE_URL}/bus-makes`),
-        fetch(`${API_BASE_URL}/bus-models`),
-        fetch(`${API_BASE_URL}/bus-manufacturers`),
-      ])
+      // Mock bus makes data
+      const mockMakes: BusMake[] = [
+        { bus_make_id: "1", make_name: "Volvo" },
+        { bus_make_id: "2", make_name: "Mercedes" },
+        { bus_make_id: "3", make_name: "Scania" },
+      ]
 
-      if (!busesRes.ok || !makesRes.ok || !modelsRes.ok || !manufacturersRes.ok) {
-        throw new Error("Failed to fetch data")
-      }
+      // Mock bus models data
+      const mockModels: BusModel[] = [
+        { bus_model_id: "1", model_name: "B11R" },
+        { bus_model_id: "2", model_name: "Sprinter" },
+        { bus_model_id: "3", model_name: "K440" },
+      ]
 
-      const [busesData, makesData, modelsData, manufacturersData] = await Promise.all([
-        busesRes.json(),
-        makesRes.json(),
-        modelsRes.json(),
-        manufacturersRes.json(),
-      ])
+      // Mock bus manufacturers data
+      const mockManufacturers: BusManufacturer[] = [
+        { bus_manufacturer_id: "1", manufacturer_name: "Volvo Buses" },
+        { bus_manufacturer_id: "2", manufacturer_name: "Daimler" },
+        { bus_manufacturer_id: "3", manufacturer_name: "Scania AB" },
+      ]
 
-      setBuses(busesData)
-      setMakes(makesData)
-      setModels(modelsData)
-      setManufacturers(manufacturersData)
+      // Mock buses data
+      const mockBuses: Bus[] = [
+        {
+          bus_id: "1",
+          registration_number: "KE-100-ABC",
+          seat_count: 50,
+          mileage_km: 15000,
+          in_service: true,
+          bus_make: mockMakes[0],
+          bus_model: mockModels[0],
+          bus_manufacturer: mockManufacturers[0],
+          fuel_type: { fuel_type_name: "DIESEL" },
+          transmission_type: { type_name: "MANUAL" },
+          amenities: ["AC", "WIFI", "USB_CHARGING"],
+        },
+        {
+          bus_id: "2",
+          registration_number: "KE-101-XYZ",
+          seat_count: 45,
+          mileage_km: 8500,
+          in_service: true,
+          bus_make: mockMakes[1],
+          bus_model: mockModels[1],
+          bus_manufacturer: mockManufacturers[1],
+          fuel_type: { fuel_type_name: "DIESEL" },
+          transmission_type: { type_name: "AUTOMATIC" },
+          amenities: ["AC", "TV", "WC", "RECLINING_SEATS"],
+        },
+      ]
+
+      setBuses(mockBuses)
+      setMakes(mockMakes)
+      setModels(mockModels)
+      setManufacturers(mockManufacturers)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching data:", err)
+      console.error("[v0] Error loading dummy data:", err)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchAll()
+  }, [])
 
   const resetForm = () => {
     setFormData({
@@ -176,24 +221,16 @@ export function BusManagement() {
       }
 
       if (editingId) {
-        const response = await fetch(`${API_BASE_URL}/buses/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to update bus")
+        await updateBus(editingId, payload, images)
       } else {
-        const response = await fetch(`${API_BASE_URL}/buses`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to create bus")
+        await createBus(payload, images)
       }
 
       await fetchAll()
       setOpen(false)
       resetForm()
+      setImages([])
+      setImagePreviews([])
     } catch (err) {
       console.error("[v0] Error saving bus:", err)
       alert("Failed to save bus. Please try again.")
@@ -204,10 +241,8 @@ export function BusManagement() {
     if (!confirm("Are you sure you want to delete this bus?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/buses/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("Failed to delete bus")
+      const ok = await deleteBus(id)
+      if (!ok) throw new Error('Failed to delete bus')
       await fetchAll()
     } catch (err) {
       console.error("[v0] Error deleting bus:", err)
@@ -445,6 +480,40 @@ export function BusManagement() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+
+              <div className="space-y-2">
+                <Label>Images</Label>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => document.getElementById('busImages')?.click()}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h2l.4-1.2A2 2 0 017.2 4h9.6a2 2 0 011.8 1.8L19 7h2a2 2 0 012 2v9a2 2 0 01-2 2H3a2 2 0 01-2-2V9a2 2 0 012-2zm9 5a3 3 0 100-6 3 3 0 000 6z" />
+                    </svg>
+                    <span>Add Image</span>
+                  </Button>
+                  <input
+                    id="busImages"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(e) => handleImageChange(e.target.files)}
+                  />
+                </div>
+
+                {imagePreviews.length > 0 && (
+                  <div className="flex gap-2 mt-2">
+                    {imagePreviews.map((src, idx) => (
+                      <img key={idx} src={src} alt={`preview-${idx}`} className="w-20 h-14 object-cover rounded" />
+                    ))}
+                  </div>
+                )}
               </div>
 
               <Button type="submit" className="w-full">
