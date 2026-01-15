@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, CheckCircle, XCircle } from "lucide-react"
-import { API_BASE_URL } from "@/lib/config"
+import { createBus, updateBus, deleteBus } from "@/lib/api"
 
 interface Bus {
   bus_id: string
@@ -76,6 +76,17 @@ export function BusManagement() {
     mileage: "",
     amenities: [] as string[],
   })
+  const [images, setImages] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+
+  // helper to set image previews
+  const handleImageChange = (files: FileList | null) => {
+    if (!files) return
+    const arr = Array.from(files)
+    setImages(arr)
+    const previews = arr.map((f) => URL.createObjectURL(f))
+    setImagePreviews(previews)
+  }
 
   // DUMMY DATA: Using mock data for development/testing
   const fetchAll = () => {
@@ -210,24 +221,16 @@ export function BusManagement() {
       }
 
       if (editingId) {
-        const response = await fetch(`${API_BASE_URL}/buses/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to update bus")
+        await updateBus(editingId, payload, images)
       } else {
-        const response = await fetch(`${API_BASE_URL}/buses`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to create bus")
+        await createBus(payload, images)
       }
 
       await fetchAll()
       setOpen(false)
       resetForm()
+      setImages([])
+      setImagePreviews([])
     } catch (err) {
       console.error("[v0] Error saving bus:", err)
       alert("Failed to save bus. Please try again.")
@@ -238,10 +241,8 @@ export function BusManagement() {
     if (!confirm("Are you sure you want to delete this bus?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/buses/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("Failed to delete bus")
+      const ok = await deleteBus(id)
+      if (!ok) throw new Error('Failed to delete bus')
       await fetchAll()
     } catch (err) {
       console.error("[v0] Error deleting bus:", err)
@@ -479,6 +480,40 @@ export function BusManagement() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+
+              <div className="space-y-2">
+                <Label>Images</Label>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => document.getElementById('busImages')?.click()}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h2l.4-1.2A2 2 0 017.2 4h9.6a2 2 0 011.8 1.8L19 7h2a2 2 0 012 2v9a2 2 0 01-2 2H3a2 2 0 01-2-2V9a2 2 0 012-2zm9 5a3 3 0 100-6 3 3 0 000 6z" />
+                    </svg>
+                    <span>Add Image</span>
+                  </Button>
+                  <input
+                    id="busImages"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(e) => handleImageChange(e.target.files)}
+                  />
+                </div>
+
+                {imagePreviews.length > 0 && (
+                  <div className="flex gap-2 mt-2">
+                    {imagePreviews.map((src, idx) => (
+                      <img key={idx} src={src} alt={`preview-${idx}`} className="w-20 h-14 object-cover rounded" />
+                    ))}
+                  </div>
+                )}
               </div>
 
               <Button type="submit" className="w-full">
