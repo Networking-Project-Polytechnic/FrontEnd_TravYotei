@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2 } from "lucide-react"
-import { API_BASE_URL } from "@/lib/config"
+import { createRoute, updateRoute, deleteRoute } from "@/lib/api"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Route {
@@ -44,6 +44,8 @@ export function RouteManagement() {
     destinationCity: "",
     distance: "",
     duration: "",
+    stops: [] as string[],
+    stopInput: "",
   })
 
   // DUMMY DATA: Using mock data for development/testing
@@ -63,6 +65,9 @@ export function RouteManagement() {
           destination_city: "Mombasa",
           distance_km: 480,
           estimated_duration_minutes: 540,
+          // example stops
+          // @ts-ignore
+          stops: ["Thika", "Nanyuki"],
         },
         {
           route_id: "2",
@@ -70,6 +75,8 @@ export function RouteManagement() {
           destination_city: "Kisumu",
           distance_km: 380,
           estimated_duration_minutes: 480,
+          // @ts-ignore
+          stops: ["Nakuru"],
         },
         {
           route_id: "3",
@@ -77,6 +84,8 @@ export function RouteManagement() {
           destination_city: "Kisumu",
           distance_km: 600,
           estimated_duration_minutes: 720,
+          // @ts-ignore
+          stops: [],
         },
       ]
 
@@ -101,7 +110,14 @@ export function RouteManagement() {
   }, [])
 
   const resetForm = () => {
-    setFormData({ originCity: "", destinationCity: "", distance: "", duration: "" })
+    setFormData({
+      originCity: "",
+      destinationCity: "",
+      distance: "",
+      duration: "",
+      stops: [],
+      stopInput: "",
+    })
     setEditingId(null)
   }
 
@@ -112,6 +128,9 @@ export function RouteManagement() {
         destinationCity: route.destination_city,
         distance: route.distance_km?.toString() || "",
         duration: route.estimated_duration_minutes?.toString() || "",
+        // @ts-ignore
+        stops: (route as any).stops || [],
+        stopInput: "",
       })
       setEditingId(route.route_id)
     } else {
@@ -129,22 +148,13 @@ export function RouteManagement() {
         destination_city: formData.destinationCity,
         distance_km: formData.distance ? Number.parseFloat(formData.distance) : null,
         estimated_duration_minutes: formData.duration ? Number.parseInt(formData.duration) : null,
+        stops: formData.stops,
       }
 
       if (editingId) {
-        const response = await fetch(`${API_BASE_URL}/routes/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to update route")
+        await updateRoute(editingId, payload)
       } else {
-        const response = await fetch(`${API_BASE_URL}/routes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to create route")
+        await createRoute(payload)
       }
 
       await fetchRoutes()
@@ -160,10 +170,8 @@ export function RouteManagement() {
     if (!confirm("Are you sure you want to delete this route?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/routes/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("Failed to delete route")
+      const ok = await deleteRoute(id)
+      if (!ok) throw new Error('Failed to delete route')
       await fetchRoutes()
     } catch (err) {
       console.error("[v0] Error deleting route:", err)
@@ -269,6 +277,43 @@ export function RouteManagement() {
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label>Stops (optional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="stopInput"
+                    value={formData.stopInput}
+                    onChange={(e) => setFormData({ ...formData, stopInput: e.target.value })}
+                    placeholder="Enter stop city"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const v = formData.stopInput.trim()
+                      if (!v) return
+                      setFormData({ ...formData, stops: [...formData.stops, v], stopInput: "" })
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+                <div className="flex gap-2 flex-wrap mt-2">
+                  {formData.stops.map((s, idx) => (
+                    <div key={idx} className="px-2 py-1 bg-muted rounded flex items-center gap-2">
+                      <span className="text-sm">{s}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, stops: formData.stops.filter((_, i) => i !== idx) })}
+                        className="text-destructive"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <Button type="submit" className="w-full">
                 {editingId ? "Update Route" : "Add Route"}
               </Button>
@@ -289,6 +334,7 @@ export function RouteManagement() {
                 <TableRow>
                   <TableHead>Origin</TableHead>
                   <TableHead>Destination</TableHead>
+                  <TableHead>Stops</TableHead>
                   <TableHead>Distance</TableHead>
                   <TableHead>Est. Duration</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -299,6 +345,14 @@ export function RouteManagement() {
                   <TableRow key={route.route_id}>
                     <TableCell className="font-medium">{route.origin_city}</TableCell>
                     <TableCell>{route.destination_city}</TableCell>
+                    <TableCell>
+                      {/* @ts-ignore */}
+                      {(route as any).stops && (route as any).stops.length > 0 ? (
+                        <div className="text-sm">{(route as any).stops.join(', ')}</div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">—</div>
+                      )}
+                    </TableCell>
                     <TableCell>{route.distance_km ? `${route.distance_km} km` : "—"}</TableCell>
                     <TableCell>
                       {route.estimated_duration_minutes
