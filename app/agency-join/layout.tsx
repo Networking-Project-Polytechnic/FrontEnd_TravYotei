@@ -17,9 +17,9 @@ export default function AgencyJoinLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+    <div className={`${inter.className} flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50`}>
       <div className="w-full">
-        
+
         {children}
       </div>
     </div>
