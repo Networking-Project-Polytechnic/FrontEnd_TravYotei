@@ -99,6 +99,25 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const selectedSchedule = schedules.find(s => s.scheduleid === formData.scheduleId);
+    if (!selectedSchedule) {
+      alert("Please select a valid trip.");
+      return;
+    }
+
+    const tripDate = selectedSchedule.date; // Use date from schedule
+
+    // Check if driver already has an assignment for this date
+    const driverIsBusy = assignments.find(assignment => {
+      const assignmentSchedule = schedules.find(s => s.scheduleid === assignment.scheduleId);
+      return assignment.driverId === formData.driverId && assignmentSchedule?.date === tripDate;
+    });
+
+    if (driverIsBusy) {
+      alert(`Driver is already assigned to a trip on ${new Date(tripDate).toLocaleDateString()}.`);
+      return;
+    }
+
     try {
       const payload: Partial<Assignment> = {
         // busid: formData.busId, // Assigning driver to bus? 
@@ -243,7 +262,7 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="assignedFrom">Assignment Start *</Label>
+                <Label htmlFor="assignedFrom">Assignment Date *</Label>
                 <Input
                   id="assignedFrom"
                   type="datetime-local"
@@ -297,8 +316,7 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
                 <TableRow>
                   <TableHead>Trip</TableHead>
                   <TableHead>Driver</TableHead>
-                  <TableHead>Assigned From</TableHead>
-                  <TableHead>Assigned To</TableHead>
+                  <TableHead>Assignment Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -328,11 +346,7 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
                     </TableCell>
                     <TableCell>{drivers.find(d => d.driverId === assignment.driverId)?.fullName || assignment.driverId}</TableCell>
                     <TableCell>
-                      {/* assignmentDate is the only date field I have */}
                       {new Date(assignment.assignmentDate).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      —
                     </TableCell>
                     <TableCell>
                       <span className="text-green-600 font-medium">Active</span>
@@ -356,6 +370,6 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div >
   )
 }

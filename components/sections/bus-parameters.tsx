@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import {
     Dialog,
     DialogContent,
@@ -95,6 +96,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
             idField: "amenityId",
             nameField: "amenityName",
             label: "Amenity Name",
+            hasDescription: true,
         },
         transportables: {
             title: "Transportables",
@@ -105,6 +107,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
             idField: "transportId",
             nameField: "itemName",
             label: "Item Name",
+            hasDescription: true,
         },
     }
 
@@ -129,7 +132,10 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
     const handleOpen = (item?: any) => {
         if (item) {
             setEditingId(item[currentConfig.idField])
-            setFormData({ name: item[currentConfig.nameField], extra: "" })
+            setFormData({
+                name: item[currentConfig.nameField],
+                extra: item.description || ""
+            })
         } else {
             setEditingId(null)
             setFormData({ name: "", extra: "" })
@@ -140,7 +146,10 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         try {
-            const payload = { [currentConfig.nameField]: formData.name, agencyId: agencyId }
+            const payload: any = { [currentConfig.nameField]: formData.name, agencyId: agencyId }
+            if (currentConfig.hasDescription) {
+                payload.description = formData.extra
+            }
             if (editingId) {
                 await currentConfig.update(editingId, payload)
             } else {
@@ -201,6 +210,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Nom</TableHead>
+                                        {currentConfig.hasDescription && <TableHead>Description</TableHead>}
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -208,6 +218,9 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
                                     {data.map((item) => (
                                         <TableRow key={item[currentConfig.idField]}>
                                             <TableCell className="font-medium">{item[currentConfig.nameField]}</TableCell>
+                                            {currentConfig.hasDescription && (
+                                                <TableCell className="max-w-xs truncate">{item.description || "—"}</TableCell>
+                                            )}
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Button variant="ghost" size="sm" onClick={() => handleOpen(item)}>
@@ -257,6 +270,18 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
                                 required
                             />
                         </div>
+                        {currentConfig.hasDescription && (
+                            <div className="space-y-2">
+                                <Label htmlFor="paramDesc">Description</Label>
+                                <Textarea
+                                    id="paramDesc"
+                                    value={formData.extra}
+                                    onChange={(e) => setFormData({ ...formData, extra: e.target.value })}
+                                    placeholder="Entrez une description..."
+                                    rows={3}
+                                />
+                            </div>
+                        )}
                         <Button type="submit" className="w-full">
                             {editingId ? "Mettre à jour" : "Créer"}
                         </Button>

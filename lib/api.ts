@@ -541,6 +541,7 @@ export interface BusImage {
   imageUrl: string
   isPrimary: boolean
   description?: string
+  publicId?: string
   s3BucketName?: string
   s3Key?: string
   fileName?: string
@@ -613,6 +614,7 @@ export interface Driver {
   fullName: string
   phone: string
   licenseNumber: string
+  description?: string
   agencyid: string
 }
 
@@ -657,6 +659,7 @@ export interface DriverImage {
   imageUrl: string
   isPrimary: boolean
   description?: string
+  publicId?: string
   s3BucketName?: string
   s3Key?: string
   fileName?: string
@@ -717,7 +720,11 @@ export async function createBus(bus: Partial<Bus>, images?: File[]): Promise<Bus
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(bus),
   })
-  if (!response.ok) throw new Error("Failed to create bus")
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error("[API] Failed to create bus:", response.status, errorText)
+    throw new Error(`Failed to create bus: ${response.statusText} (${response.status})`)
+  }
   return response.json()
 }
 
@@ -727,7 +734,11 @@ export async function updateBus(id: string, bus: Partial<Bus>, images?: File[]):
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(bus),
   })
-  if (!response.ok) throw new Error("Failed to update bus")
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error("[API] Failed to update bus:", response.status, errorText)
+    throw new Error(`Failed to update bus: ${response.statusText} (${response.status})`)
+  }
   return response.json()
 }
 
@@ -783,7 +794,10 @@ export async function createRoute(route: Partial<Route>): Promise<Route> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(route),
   })
-  if (!response.ok) throw new Error("Failed to create route")
+  if (!response.ok) {
+    const errorData = await response.text().catch(() => "No error details")
+    throw new Error(`Failed to create route: ${response.status} ${response.statusText} - ${errorData}`)
+  }
   return response.json()
 }
 
@@ -793,7 +807,10 @@ export async function updateRoute(id: string, route: Partial<Route>): Promise<Ro
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(route),
   })
-  if (!response.ok) throw new Error("Failed to update route")
+  if (!response.ok) {
+    const errorData = await response.text().catch(() => "No error details")
+    throw new Error(`Failed to update route: ${response.status} ${response.statusText} - ${errorData}`)
+  }
   return response.json()
 }
 
@@ -810,7 +827,6 @@ export async function getDrivers(): Promise<Driver[]> {
 }
 
 export async function createDriver(driver: Partial<Driver>, photo?: File): Promise<Driver> {
-  // Simple JSON for now, assuming photo is handled separately if needed
   const response = await fetch(`${API_BASE_URL}/api/v1/drivers`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1299,6 +1315,16 @@ export async function getPrimaryDriverImage(driverId: string): Promise<DriverIma
   return response.json()
 }
 
+export async function createDriverImage(image: Partial<DriverImage>): Promise<DriverImage> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/driver-images`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(image),
+  })
+  if (!response.ok) throw new Error("Failed to create driver image")
+  return response.json()
+}
+
 // NOTE: Creating images usually involves FormData. This is a placeholder signature.
 export async function deleteDriverImage(imageId: string): Promise<boolean> {
   const response = await fetch(`${API_BASE_URL}/api/v1/driver-images/${imageId}`, { method: "DELETE" })
@@ -1319,9 +1345,88 @@ export async function getPrimaryBusImage(busId: string): Promise<BusImage | null
   return response.json()
 }
 
+export async function createBusImage(image: Partial<BusImage>): Promise<BusImage> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-images`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(image),
+  })
+  if (!response.ok) throw new Error("Failed to create bus image")
+  return response.json()
+}
+
 export async function deleteBusImage(imageId: string): Promise<boolean> {
   const response = await fetch(`${API_BASE_URL}/api/v1/bus-images/${imageId}`, { method: "DELETE" })
   return response.ok
+}
+
+// --- Cloudinary Helper ---
+
+interface CloudinaryResponse {
+  public_id: string
+  secure_url: string
+  format: string
+  width: number
+  height: number
+  bytes: number
+  created_at: string
+}
+
+export async function uploadToCloudinary(file: File): Promise<CloudinaryResponse> {
+  const cloudName = "dnr4lqejq"
+  const uploadPreset = "Upload-agency"
+
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("upload_preset", uploadPreset)
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error("Cloudinary upload failed:", response.status, errorText)
+    throw new Error(`Failed to upload image to Cloudinary: ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
+export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
+  const cloudName = "dnr4lqejq"
+  const apiKey = "826994845279213"
+  const apiSecret = "H0PpFIJDJj7UUt8PeAcbunasNrM"
+  const timestamp = Math.round(new Date().getTime() / 1000)
+
+  // Signature sequence: public_id=xxx&timestamp=xxx<api_secret>
+  const signatureStr = `public_id=${publicId}&timestamp=${timestamp}${apiSecret}`
+
+  // browser-native SHA1
+  const msgUint8 = new TextEncoder().encode(signatureStr)
+  const hashBuffer = await crypto.subtle.digest("SHA-1", msgUint8)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  const signature = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+
+  const formData = new FormData()
+  formData.append("public_id", publicId)
+  formData.append("api_key", apiKey)
+  formData.append("timestamp", timestamp.toString())
+  formData.append("signature", signature)
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error("Cloudinary delete failed:", response.status, errorText)
+    return false
+  }
+
+  return true
 }
 
 // --- Assignments ---

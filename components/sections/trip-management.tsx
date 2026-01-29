@@ -173,6 +173,33 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
       return;
     }
 
+    const tripDate = new Date(formData.departureTime).toISOString().split('T')[0];
+
+    // 1. Driver Uniqueness Check (Max 1 trip per day)
+    const driverConflict = trips.find(trip =>
+      trip.scheduleid !== editingId &&
+      trip.driverid === formData.driverId &&
+      trip.date === tripDate
+    );
+
+    if (driverConflict) {
+      alert(`Driver is already assigned to another trip on ${tripDate}.`);
+      return;
+    }
+
+    // 2. Bus-Route Uniqueness Check (Max 1 specific route per day for this bus)
+    const busRouteConflict = trips.find(trip =>
+      trip.scheduleid !== editingId &&
+      trip.busid === formData.busId &&
+      trip.routeid === formData.routeId &&
+      trip.date === tripDate
+    );
+
+    if (busRouteConflict) {
+      alert(`This bus is already scheduled for this route on ${tripDate}.`);
+      return;
+    }
+
     try {
       const payload: Partial<Schedule> = {
         routeid: formData.routeId,
@@ -465,11 +492,14 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setViewing3DDetails({
-                            tripId: trip.scheduleid,
-                            totalSeats: 64, // Standard large bus
-                            occupiedSeats: ["1A", "3B", "5C", "10D", "12A"] // Simulated data
-                          })}
+                          onClick={() => {
+                            const bus = buses.find(b => b.busId === trip.busid);
+                            setViewing3DDetails({
+                              tripId: trip.scheduleid,
+                              totalSeats: bus?.totalSeats || 64,
+                              occupiedSeats: ["1A", "3B", "5C", "10D", "12A"] // Simulated data
+                            });
+                          }}
                           className="gap-1 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50"
                         >
                           <LayoutGrid className="w-4 h-4" />

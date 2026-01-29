@@ -121,6 +121,18 @@ export function FareManagement({ agencyId }: { agencyId: string }) {
       }
       console.log("PAYLOAD V2 - Sending:", JSON.stringify(payload));
 
+      // Check for duplicate fare
+      const duplicate = fares.find(f =>
+        f.priceId !== editingId &&
+        f.routeId === payload.routeId &&
+        f.busId === payload.busId
+      );
+
+      if (duplicate) {
+        alert("A fare for this route and bus already exists.");
+        return;
+      }
+
       if (editingId) {
         await updateFare(editingId, payload)
       } else {

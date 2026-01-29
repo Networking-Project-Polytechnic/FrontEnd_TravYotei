@@ -22,10 +22,12 @@ import {
   updateRoute,
   deleteRoute,
   getLocations,
+  createLocation,
+  getLocationByName,
   Route,
   Location,
 } from "@/lib/api"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CreatableSelect } from "@/components/ui/creatable-select"
 
 
 export function RouteManagement({ agencyId }: { agencyId: string }) {
@@ -86,6 +88,45 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
     setOpen(true)
   }
 
+  const handleCreateLocation = async (cityName: string, field: "originCity" | "destinationCity") => {
+    try {
+      // 1. Check if it already exists in our state (case-insensitive)
+      const existing = locations.find(
+        (l) => l.locationname.toLowerCase() === cityName.toLowerCase()
+      )
+
+      if (existing) {
+        setFormData((prev) => ({ ...prev, [field]: existing.locationid }))
+        return
+      }
+
+      // 2. Double check with backend just in case (optional but safer)
+      const backendExists = await getLocationByName(cityName)
+      if (backendExists) {
+        setFormData((prev) => ({ ...prev, [field]: backendExists.locationid }))
+        // Refresh state to include it if it was missing for some reason
+        const updatedLocations = await getLocations()
+        setLocations(updatedLocations)
+        return
+      }
+
+      // 3. Create new
+      const newLoc = await createLocation({
+        locationname: cityName,
+        agencyid: agencyId
+      })
+
+      // 4. Refresh and select
+      const updatedLocations = await getLocations()
+      setLocations(updatedLocations)
+      setFormData((prev) => ({ ...prev, [field]: newLoc.locationid }))
+
+    } catch (err) {
+      console.error("Failed to create location from route management:", err)
+      alert("Failed to create location.")
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -94,7 +135,19 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
         startlocationid: formData.originCity,
         endlocationid: formData.destinationCity,
         agencyid: agencyId,
-        stopPoints: formData.stopPoints.split(",").map(s => s.trim()).filter(s => s.length > 0),
+        stopPoints: formData.stopPoints.split(",").map(p => p.trim()).filter(p => p !== ""),
+      }
+
+      // Check for duplicate route (excluding current one if editing)
+      const duplicate = routes.find(r =>
+        r.routeid !== editingId &&
+        r.startlocationid === payload.startlocationid &&
+        r.endlocationid === payload.endlocationid
+      );
+
+      if (duplicate) {
+        alert("A route between these locations already exists. Please choose a different origin or destination.");
+        return;
       }
 
       if (editingId) {
@@ -108,7 +161,12 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
       resetForm()
     } catch (err) {
       console.error("[RouteManagement] Error saving route:", err)
-      alert("Failed to save route. Please try again.")
+      const errorMessage = err instanceof Error ? err.message : "";
+      if (errorMessage.includes("409") || errorMessage.toLowerCase().includes("already exists")) {
+        alert("This route already exists in the system. Duplicate routes are not allowed.")
+      } else {
+        alert(err instanceof Error ? err.message : "Failed to save route. Please try again.")
+      }
     }
   }
 
@@ -165,39 +223,25 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="originCity">Origin City *</Label>
-                <Select
+                <CreatableSelect
+                  options={locations.map((l) => ({ label: l.locationname, value: l.locationid }))}
                   value={formData.originCity}
-                  onValueChange={(value) => setFormData({ ...formData, originCity: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select origin city" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((location) => (
-                      <SelectItem key={location.locationid} value={location.locationid}>
-                        {location.locationname}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(val) => setFormData({ ...formData, originCity: val })}
+                  onCreate={(val) => handleCreateLocation(val, "originCity")}
+                  placeholder="Select or create origin city"
+                  searchPlaceholder="Search city..."
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="destinationCity">Destination City *</Label>
-                <Select
+                <CreatableSelect
+                  options={locations.map((l) => ({ label: l.locationname, value: l.locationid }))}
                   value={formData.destinationCity}
-                  onValueChange={(value) => setFormData({ ...formData, destinationCity: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select destination city" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((location) => (
-                      <SelectItem key={location.locationid} value={location.locationid}>
-                        {location.locationname}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(val) => setFormData({ ...formData, destinationCity: val })}
+                  onCreate={(val) => handleCreateLocation(val, "destinationCity")}
+                  placeholder="Select or create destination city"
+                  searchPlaceholder="Search city..."
+                />
               </div>
 
               <div className="space-y-2">

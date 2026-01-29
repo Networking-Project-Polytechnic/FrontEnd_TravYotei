@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,11 @@ import {
   createDriver,
   updateDriver,
   deleteDriver,
+  uploadToCloudinary,
+  createDriverImage,
+  getPrimaryDriverImage,
+  getDriverImages,
+  deleteFromCloudinary,
   Driver,
 } from "@/lib/api"
 
@@ -34,8 +40,11 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
     fullName: "",
     phone: "",
     licenseNumber: "",
+    description: "",
     photo: null as File | null,
   })
+
+  const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null)
 
   const fetchDrivers = async () => {
     try {
@@ -56,19 +65,33 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
   }, [])
 
   const resetForm = () => {
-    setFormData({ fullName: "", phone: "", licenseNumber: "", photo: null })
+    setFormData({ fullName: "", phone: "", licenseNumber: "", description: "", photo: null })
+    setCurrentPhotoUrl(null)
     setEditingId(null)
   }
 
-  const handleOpen = (driver?: Driver) => {
+  const handleOpen = async (driver?: Driver) => {
     if (driver) {
       setFormData({
         fullName: driver.fullName,
         phone: driver.phone,
         licenseNumber: driver.licenseNumber,
-        photo: null, // Photo cannot be pre-filled for security reasons
+        description: driver.description || "",
+        photo: null,
       })
       setEditingId(driver.driverId)
+
+      try {
+        const image = await getPrimaryDriverImage(driver.driverId)
+        if (image) {
+          setCurrentPhotoUrl(image.imageUrl)
+        } else {
+          setCurrentPhotoUrl(null)
+        }
+      } catch (e) {
+        console.warn("Failed to fetch driver image", e)
+        setCurrentPhotoUrl(null)
+      }
     } else {
       resetForm()
     }
@@ -83,15 +106,34 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
         fullName: formData.fullName,
         phone: formData.phone,
         licenseNumber: formData.licenseNumber,
+        description: formData.description,
         agencyid: agencyId,
       }
 
-      const file = formData.photo ? (formData.photo as File) : undefined
-
+      // 1. Create/Update Driver (Metadata only)
+      let savedDriver: Driver
       if (editingId) {
-        await updateDriver(editingId, payload, file)
+        savedDriver = await updateDriver(editingId, payload)
       } else {
-        await createDriver(payload, file)
+        savedDriver = await createDriver(payload)
+      }
+
+      // 2. If photo is selected, upload to Cloudinary and save metadata
+      if (formData.photo) {
+        // Validation (Frontend side)
+        if (formData.photo instanceof File) {
+          const cloudinaryRes = await uploadToCloudinary(formData.photo);
+
+          await createDriverImage({
+            driverId: savedDriver.driverId,
+            imageUrl: cloudinaryRes.secure_url,
+            publicId: cloudinaryRes.public_id,
+            isPrimary: true,
+            fileName: formData.photo.name,
+            contentType: formData.photo.type,
+            fileSize: formData.photo.size
+          });
+        }
       }
 
       await fetchDrivers()
@@ -104,9 +146,20 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this driver?")) return
+    if (!confirm("Are you sure you want to delete this driver? (This will also remove their photo from Cloudinary)")) return
 
     try {
+      // 1. Fetch images to get publicIds
+      const images = await getDriverImages(id)
+
+      // 2. Delete from Cloudinary
+      for (const img of images) {
+        if (img.publicId) {
+          await deleteFromCloudinary(img.publicId)
+        }
+      }
+
+      // 3. Delete from backend
       await deleteDriver(id)
       await fetchDrivers()
     } catch (err) {
@@ -187,6 +240,17 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Notes sur le chauffeur (expérience, spécialités...)"
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="photo">Photo</Label>
                 <Input
                   id="photo"
@@ -194,9 +258,11 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
                   accept="image/*"
                   onChange={(e) => setFormData({ ...formData, photo: e.target.files ? e.target.files[0] : null })}
                 />
-                {formData.photo && (
-                  <img src={URL.createObjectURL(formData.photo)} alt="photo-preview" className="w-20 h-20 object-cover rounded mt-2" />
-                )}
+                {formData.photo ? (
+                  <img src={URL.createObjectURL(formData.photo)} alt="New photo" className="w-20 h-20 object-cover rounded mt-2" />
+                ) : currentPhotoUrl ? (
+                  <img src={currentPhotoUrl} alt="Current photo" className="w-20 h-20 object-cover rounded mt-2" />
+                ) : null}
               </div>
 
               <Button type="submit" className="w-full">
@@ -220,6 +286,7 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>License Number</TableHead>
+                  <TableHead>Description</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -229,6 +296,7 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
                     <TableCell className="font-medium">{driver.fullName}</TableCell>
                     <TableCell>{driver.phone}</TableCell>
                     <TableCell>{driver.licenseNumber}</TableCell>
+                    <TableCell className="max-w-xs truncate">{driver.description || "—"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => handleOpen(driver)} className="gap-1">

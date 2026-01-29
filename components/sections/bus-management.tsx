@@ -18,9 +18,11 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, CheckCircle, XCircle } from "lucide-react"
+import { CreatableSelect } from "@/components/ui/creatable-select"
 import {
   getBusesByAgency,
   getBusById,
+  getBusImages,
   createBus,
   updateBus,
   deleteBus,
@@ -32,6 +34,14 @@ import {
   getBusTypes,
   getVehicleAmenities,
   getBusTransportables,
+  createBusMake,
+  createBusModel,
+  createManufacturer,
+  createFuelType,
+  createBusType,
+  uploadToCloudinary,
+  createBusImage,
+  deleteFromCloudinary,
   Bus,
   BusMake,
   BusModel,
@@ -188,8 +198,17 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
         setEditingId(fullBus.busId)
         setCurrentReviews(fullBus.reviews || [])
 
-        if (fullBus.images) {
+        if (fullBus.images && fullBus.images.length > 0) {
           setImagePreviews(fullBus.images.map(img => img.imageUrl))
+        } else {
+          // Explicitly fetch if not included in bus details
+          try {
+            const imagesData = await getBusImages(fullBus.busId)
+            setImagePreviews(imagesData.map(img => img.imageUrl))
+          } catch (e) {
+            console.error("Failed to fetch bus images:", e)
+            setImagePreviews([])
+          }
         }
       }
     } else {
@@ -197,6 +216,65 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
     }
     setOpen(true)
   }
+
+  const handleCreateMake = async (inputValue: string) => {
+    try {
+      const newMake = await createBusMake({
+        makeName: inputValue,
+        agencyId: agencyId
+      });
+      const updatedMakes = await getBusMakes();
+      setMakes(updatedMakes);
+      setFormData(prev => ({ ...prev, busMakeId: newMake.busMakeId }));
+    } catch (err) {
+      console.error("Failed to create make:", err);
+      alert("Failed to create new Make.");
+    }
+  };
+
+  const handleCreateBusModel = async (inputValue: string) => {
+    try {
+      const newModel = await createBusModel({ modelName: inputValue, agencyId });
+      setModels(await getBusModels());
+      setFormData(prev => ({ ...prev, busModelId: newModel.busModelId }));
+    } catch (err) {
+      console.error("Failed to create model:", err);
+      alert("Failed to create new Model.");
+    }
+  };
+
+  const handleCreateManufacturer = async (inputValue: string) => {
+    try {
+      const newMan = await createManufacturer({ manufacturerName: inputValue, agencyId });
+      setManufacturers(await getManufacturers());
+      setFormData(prev => ({ ...prev, manufacturerId: newMan.manufacturerId }));
+    } catch (err) {
+      console.error("Failed to create manufacturer:", err);
+      alert("Failed to create new Manufacturer.");
+    }
+  };
+
+  const handleCreateFuelType = async (inputValue: string) => {
+    try {
+      const newFuel = await createFuelType({ fuelTypeName: inputValue, agencyId });
+      setFuelTypes(await getFuelTypes());
+      setFormData(prev => ({ ...prev, fuelTypeId: newFuel.fuelTypeId }));
+    } catch (err) {
+      console.error("Failed to create fuel type:", err);
+      alert("Failed to create new Fuel Type.");
+    }
+  };
+
+  const handleCreateBusType = async (inputValue: string) => {
+    try {
+      const newType = await createBusType({ busTypeName: inputValue, agencyId });
+      setBusTypes(await getBusTypes());
+      setFormData(prev => ({ ...prev, busTypeId: newType.busTypeId }));
+    } catch (err) {
+      console.error("Failed to create bus type:", err);
+      alert("Failed to create new Bus Type.");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -231,10 +309,34 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
         })),
       }
 
+      // 1. Create/Update Bus (Metadata)
+      let savedBus: Bus
       if (editingId) {
-        await updateBus(editingId, payload, images)
+        savedBus = await updateBus(editingId, payload)
       } else {
-        await createBus(payload, images)
+        savedBus = await createBus(payload)
+      }
+
+      // 2. Upload Images to Cloudinary
+      if (images.length > 0) {
+        for (const imageFile of images) {
+          if (imageFile instanceof File) {
+            try {
+              const cloudRes = await uploadToCloudinary(imageFile);
+              await createBusImage({
+                busId: savedBus.busId,
+                imageUrl: cloudRes.secure_url,
+                publicId: cloudRes.public_id,
+                isPrimary: images.indexOf(imageFile) === 0,
+                fileName: imageFile.name,
+                contentType: imageFile.type,
+                fileSize: imageFile.size
+              });
+            } catch (imgErr) {
+              console.error("Failed to upload bus image:", imgErr);
+            }
+          }
+        }
       }
 
       await fetchAll()
@@ -247,14 +349,29 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this bus?")) return
+    if (!confirm("Are you sure you want to delete this bus? (Images will also be removed from Cloudinary)")) return
 
     try {
-      await deleteBus(id)
+      // 1. Fetch images to get publicIds
+      const images = await getBusImages(id)
+
+      // 2. Delete from Cloudinary
+      for (const img of images) {
+        if (img.publicId) {
+          await deleteFromCloudinary(img.publicId)
+        }
+      }
+
+      // 3. Delete from backend
+      const success = await deleteBus(id)
+      if (!success) {
+        throw new Error("Bus deletion failed in API (returned false)");
+      }
       await fetchAll()
     } catch (err) {
       console.error("[BusManagement] Error deleting bus:", err)
-      alert("Failed to delete bus. Please try again.")
+      const errorMsg = "Unable to delete bus. It is likely assigned to active Trips, Assignments, or Route Prices. \n\nPlease remove these dependencies first.";
+      alert(errorMsg);
     }
   }
 
@@ -321,7 +438,7 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="registrationNumber">Registration Number *</Label>
                   <Input
@@ -343,7 +460,18 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="busTypeId">Bus Type *</Label>
+                  <CreatableSelect
+                    options={busTypes.map(t => ({ label: t.busTypeName, value: t.busTypeId }))}
+                    value={formData.busTypeId}
+                    onChange={(val) => setFormData({ ...formData, busTypeId: val })}
+                    onCreate={handleCreateBusType}
+                    placeholder="Select or Create Type"
+                    searchPlaceholder="Search Type..."
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="totalSeats">Total Seats *</Label>
                   <Input
@@ -356,96 +484,59 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="busTypeId">Bus Type *</Label>
-                  <Select value={formData.busTypeId} onValueChange={(val) => setFormData({ ...formData, busTypeId: val })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {busTypes.map((type) => (
-                        <SelectItem key={type.busTypeId} value={type.busTypeId}>
-                          {type.busTypeName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="busMakeId">Make *</Label>
-                  <Select value={formData.busMakeId} onValueChange={(val) => setFormData({ ...formData, busMakeId: val })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select make" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {makes.map((make) => (
-                        <SelectItem key={make.busMakeId} value={make.busMakeId}>
-                          {make.makeName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CreatableSelect
+                    options={makes.map(m => ({ label: m.makeName, value: m.busMakeId }))}
+                    value={formData.busMakeId}
+                    onChange={(val) => setFormData({ ...formData, busMakeId: val })}
+                    onCreate={handleCreateMake}
+                    placeholder="Select or Create Make"
+                    searchPlaceholder="Search Make..."
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="busModelId">Model *</Label>
-                  <Select value={formData.busModelId} onValueChange={(val) => setFormData({ ...formData, busModelId: val })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {models.map((model) => (
-                        <SelectItem key={model.busModelId} value={model.busModelId}>
-                          {model.modelName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CreatableSelect
+                    options={models.map(m => ({ label: m.modelName, value: m.busModelId }))}
+                    value={formData.busModelId}
+                    onChange={(val) => setFormData({ ...formData, busModelId: val })}
+                    onCreate={handleCreateBusModel}
+                    placeholder="Select or Create Model"
+                    searchPlaceholder="Search Model..."
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="manufacturerId">Manufacturer *</Label>
-                  <Select
+                  <CreatableSelect
+                    options={manufacturers.map(m => ({ label: m.manufacturerName, value: m.manufacturerId }))}
                     value={formData.manufacturerId}
-                    onValueChange={(val) => setFormData({ ...formData, manufacturerId: val })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select manufacturer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {manufacturers.map((m) => (
-                        <SelectItem key={m.manufacturerId} value={m.manufacturerId}>
-                          {m.manufacturerName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(val) => setFormData({ ...formData, manufacturerId: val })}
+                    onCreate={handleCreateManufacturer}
+                    placeholder="Select or Create Manuf."
+                    searchPlaceholder="Search Manufacturer..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fuelTypeId">Fuel Type *</Label>
+                  <CreatableSelect
+                    options={fuelTypes.map(f => ({ label: f.fuelTypeName, value: f.fuelTypeId }))}
+                    value={formData.fuelTypeId}
+                    onChange={(val) => setFormData({ ...formData, fuelTypeId: val })}
+                    onCreate={handleCreateFuelType}
+                    placeholder="Select or Create Fuel"
+                    searchPlaceholder="Search Fuel..."
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fuelTypeId">Fuel Type *</Label>
-                  <Select
-                    value={formData.fuelTypeId}
-                    onValueChange={(val) => setFormData({ ...formData, fuelTypeId: val })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select fuel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fuelTypes.map((type) => (
-                        <SelectItem key={type.fuelTypeId} value={type.fuelTypeId}>
-                          {type.fuelTypeName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="transmissionTypeId">Transmission *</Label>
                   <Select
@@ -466,7 +557,7 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="luggageCapacityKg">Luggage (kg)</Label>
                   <Input

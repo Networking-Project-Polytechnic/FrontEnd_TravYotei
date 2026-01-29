@@ -32,8 +32,6 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     cityName: "",
-    region: "",
-    country: "",
   })
 
   // DUMMY DATA: Using mock location data for development/testing
@@ -56,7 +54,7 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
   }, [])
 
   const resetForm = () => {
-    setFormData({ cityName: "", region: "", country: "" })
+    setFormData({ cityName: "" })
     setEditingId(null)
   }
 
@@ -64,8 +62,6 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
     if (location) {
       setFormData({
         cityName: location.locationname,
-        region: "", // Not in current DTO
-        country: "", // Not in current DTO
       })
       setEditingId(location.locationid)
     } else {
@@ -81,6 +77,17 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
       const payload: Partial<Location> = {
         locationname: formData.cityName,
         agencyid: agencyId,
+      }
+
+      // Check for duplicate location
+      const duplicate = locations.find(l =>
+        l.locationid !== editingId &&
+        l.locationname.toLowerCase() === formData.cityName.toLowerCase()
+      );
+
+      if (duplicate) {
+        alert("A location with this name already exists.");
+        return;
       }
 
       if (editingId) {
@@ -159,24 +166,7 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="region">Region/State</Label>
-                <Input
-                  id="region"
-                  value={formData.region}
-                  onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                  placeholder="e.g., Littoral"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  placeholder="e.g., Cameroon"
-                />
-              </div>
+
               <Button type="submit" className="w-full">
                 {editingId ? "Update Location" : "Add Location"}
               </Button>
@@ -209,8 +199,7 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>City</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Country</TableHead>
+
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -218,8 +207,7 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
                 {locations.map((location) => (
                   <TableRow key={location.locationid}>
                     <TableCell className="font-medium">{location.locationname}</TableCell>
-                    <TableCell>—</TableCell>
-                    <TableCell>—</TableCell>
+
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => handleOpen(location)} className="gap-1">
