@@ -3,22 +3,27 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { UUID } from 'crypto';
 
 type UserRole = 'CLIENT' | 'AGENCY' | 'ADMIN';
 
 interface User {
-  id: string;
+  id: UUID;
+  firstName: string;
+  lastName: string
   email: string;
-  name: string;
+  userName: string;
   role: UserRole;
   phoneNumber?: string;
   profileImageUrl?: string;
+  address?: string;
+  licenseNumber?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (userName: string, password: string) => Promise<void>;
   signup: (userData: any) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
@@ -40,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Protect routes based on authentication
   useEffect(() => {
     if (!loading) {
-      const publicRoutes = ['/client-join', '/', '/agencies', '/services', '/contact'];
+      const publicRoutes = ['/client-join', '/agency-join', '/', '/agencies', '/services', '/contact'];
       const isPublicRoute = publicRoutes.includes(pathname) || 
                            pathname.startsWith('/api/') || 
                            pathname.startsWith('/_next/');

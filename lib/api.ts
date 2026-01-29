@@ -1,4 +1,6 @@
 // lib/api.ts
+import axios from 'axios';
+
 export type Agency = {
   id: string;
   userName: string;
@@ -504,6 +506,155 @@ export async function getAgencyById(id: string): Promise<Agency | null> {
   console.warn(`⚠️ Agence ID ${id} non trouvée`);
   return mockAgencies[0];
 }
+
+// Axios instance for authentication API
+const api_auth = axios.create({
+  baseURL: 'http://localhost:8181/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+// Login
+export const login = async (name: string, password: string) => {
+  try {
+    const response = await api_auth.post('/auth/login', {
+      name,
+      password,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+// Client signup
+export const signup_client = async (userData: {
+  name: string;
+  email: string;
+  password: string;
+}) => {
+  try {
+    const response = await api_auth.post('/auth/client/register', userData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Agency regiser
+export const signup_agency = async (userData: {
+  firstName: string;
+  lastName: string;
+  userName: string;
+  email: string;
+  password: string;
+  phoneNumber: number;
+  address: string;
+  licenseNumber: string;
+}) => {
+  try {
+    const response = await api_auth.post('/auth/agency/register', userData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Client signup
+export const signup = async (userData: {
+  firstName: string;
+  lastName: string;
+  userName: string;
+  email: string;
+  password: string;
+  phoneNumber: number;
+  address: string;
+}) => {
+  try {
+    const response = await api_auth.post('/auth/admin/register', userData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Profile picture update
+export const updateProfileImage = async (newImageUrl: string) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api_auth.put('/user/profile/image-url',
+      { newImageUrl },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+//Api to get all agencies
+// uncomment when we want to switch to real API
+// const API_URL = 'http://localhost:8181/api/v1/agencies';
+// export const getAgencies = async () => {
+//   try {
+//     const response = await axios.get(API_URL);
+//     return response.data;
+//   }
+//   catch (error) {
+//     throw error;
+//   }
+// }
+
+// export const getAgencyById = async (id: string) => {
+//   try {
+//     const response = await axios.get(`${API_URL}/${id}`);
+//     return response.data;
+//   } catch (error) {
+//     console.error('Error fetching agency:', error);
+//     return null;
+//   }
+// };
+
+// API functions for tracking
+const TRACKING_API = 'http://localhost:8080/api/tracking';
+
+export const getTrackingByCode = async (code: string) => {
+  try {
+    const response = await fetch(`${TRACKING_API}/code/${code}`);
+    if (!response.ok) throw new Error('Tracking code not found');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching tracking:', error);
+    return null;
+  }
+};
+
+export const getTrackingHistory = async (busId: string) => {
+  try {
+    const response = await fetch(`${TRACKING_API}/${busId}`);
+    if (!response.ok) throw new Error('History not found');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching history:', error);
+    return [];
+  }
+};
+
+export const updateTracking = async (data: any) => {
+  try {
+    const response = await fetch(`${TRACKING_API}/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating tracking:', error);
+    return null;
+  }
+};
 
 // Creation of packages
 export const create_package = async (packageData: {}) => { }
@@ -1491,18 +1642,4 @@ export async function deleteBusReview(id: string): Promise<boolean> {
   return response.ok
 }
 
-// Fonctions mockées utiles (si besoin ailleurs dans l'app)
 
-export const login = async (...args: any[]) => ({ token: "mock-token" });
-export const signup = async (...args: any[]) => ({ success: true });
-export const signup_agency = async (...args: any[]) => ({ success: true });
-export const login_admin = async (...args: any[]) => ({ token: "mock-admin-token" });
-export const signup_admin = async (...args: any[]) => ({ success: true });
-export const getTrackingByCode = async (...args: any[]) => ({
-  status: "EN TRANSIT",
-  bus_id: "mock-bus-id",
-  start: [0, 0],
-  end: [1, 1]
-});
-export const getTrackingHistory = async (...args: any[]) => [];
-export const updateTracking = async (...args: any[]) => ({ success: true });
