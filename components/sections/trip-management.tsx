@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, Clock } from "lucide-react"
+import { Plus, Edit2, Trash2, Clock, LayoutGrid } from "lucide-react"
 import {
   getSchedulesByAgency,
   createSchedule,
@@ -36,6 +36,7 @@ import {
   getRoutePricesByAgency,
   RoutePrice,
 } from "@/lib/api"
+import { BusSeatSimulation } from "@/components/BusSeatSimulation"
 
 const TRIP_STATUSES = ["SCHEDULED", "DELAYED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
 
@@ -76,6 +77,11 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
     arrivalTime: "",
     status: "SCHEDULED",
   })
+  const [viewing3DDetails, setViewing3DDetails] = useState<{
+    tripId: string;
+    totalSeats: number;
+    occupiedSeats: string[];
+  } | null>(null)
 
   // Derived state for the selected price
   const selectedPrice = prices.find(
@@ -456,6 +462,18 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewing3DDetails({
+                            tripId: trip.scheduleid,
+                            totalSeats: 64, // Standard large bus
+                            occupiedSeats: ["1A", "3B", "5C", "10D", "12A"] // Simulated data
+                          })}
+                          className="gap-1 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50"
+                        >
+                          <LayoutGrid className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleOpen(trip)} className="gap-1">
                           <Edit2 className="w-4 h-4" />
                         </Button>
@@ -476,6 +494,25 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!viewing3DDetails} onOpenChange={(open) => !open && setViewing3DDetails(null)}>
+        <DialogContent className="max-w-5xl h-[80vh] flex flex-col p-0 overflow-hidden bg-slate-950 border-slate-800">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle className="text-white text-2xl">Trip Occupancy - 3D Simulation</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Real-time view of seat availability for trip #{viewing3DDetails?.tripId}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 p-6">
+            {viewing3DDetails && (
+              <BusSeatSimulation
+                totalSeats={viewing3DDetails.totalSeats}
+                occupiedSeats={viewing3DDetails.occupiedSeats}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
