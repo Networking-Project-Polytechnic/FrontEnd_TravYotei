@@ -1,0 +1,42 @@
+﻿app/agency-join/LoginForm.tsx(33,36): error TS2554: Expected 0 arguments, but got 2.
+app/agency-join/SignupForm.tsx(53,44): error TS2554: Expected 0 arguments, but got 1.
+app/Tracking/page.tsx(138,9): error TS2345: Argument of type 'number[]' is not assignable to parameter of type '[number, number]'.
+  Target requires 2 element(s) but source may have fewer.
+app/Tracking/page.tsx(142,26): error TS2345: Argument of type 'number[]' is not assignable to parameter of type 'SetStateAction<[number, number] | null>'.
+  Type 'number[]' is not assignable to type '(prevState: [number, number] | null) => [number, number] | null'.
+    Type 'number[]' provides no match for the signature '(prevState: [number, number] | null): [number, number] | null'.
+app/Tracking/page.tsx(143,25): error TS2345: Argument of type 'number[]' is not assignable to parameter of type '[number, number]'.
+  Target requires 2 element(s) but source may have fewer.
+app/Tracking/page.tsx(435,44): error TS2554: Expected 0 arguments, but got 1.
+app/Tracking/page.tsx(443,23): error TS2339: Property 'bus_id' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(444,28): error TS2339: Property 'start' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(445,26): error TS2339: Property 'end' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(453,25): error TS2339: Property 'start' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(453,39): error TS2339: Property 'start' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(453,55): error TS2339: Property 'start' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(454,23): error TS2339: Property 'end' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(454,35): error TS2339: Property 'end' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(454,49): error TS2339: Property 'end' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(455,27): error TS2339: Property 'start' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(455,41): error TS2339: Property 'start' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(455,57): error TS2339: Property 'start' does not exist on type '{ status: string; }'.
+app/Tracking/page.tsx(463,44): error TS2345: Argument of type 'any[]' is not assignable to parameter of type '[number, number]'.
+  Target requires 2 element(s) but source may have fewer.
+app/Tracking/page.tsx(465,28): error TS2345: Argument of type 'any[]' is not assignable to parameter of type 'SetStateAction<[number, number] | null>'.
+  Type 'any[]' is not assignable to type '(prevState: [number, number] | null) => [number, number] | null'.
+    Type 'any[]' provides no match for the signature '(prevState: [number, number] | null): [number, number] | null'.
+components/LoginForm.tsx(33,36): error TS2554: Expected 0 arguments, but got 2.
+components/SignupForm.tsx(45,37): error TS2554: Expected 0 arguments, but got 1.
+components/ui/calendar.tsx(9,60): error TS2307: Cannot find module 'react-day-picker' or its corresponding type declarations.
+components/ui/calendar.tsx(39,31): error TS7006: Parameter 'date' implicitly has an 'any' type.
+components/ui/calendar.tsx(128,18): error TS7031: Binding element 'className' implicitly has an 'any' type.
+components/ui/calendar.tsx(128,29): error TS7031: Binding element 'rootRef' implicitly has an 'any' type.
+components/ui/calendar.tsx(138,21): error TS7031: Binding element 'className' implicitly has an 'any' type.
+components/ui/calendar.tsx(138,32): error TS7031: Binding element 'orientation' implicitly has an 'any' type.
+components/ui/calendar.tsx(159,24): error TS7031: Binding element 'children' implicitly has an 'any' type.
+components/ui/chart.tsx(4,36): error TS2307: Cannot find module 'recharts' or its corresponding type declarations.
+components/ui/chart.tsx(298,19): error TS2322: Type 'unknown' is not assignable to type 'BackgroundColor | undefined'.
+components/ui/drawer.tsx(4,43): error TS2307: Cannot find module 'vaul' or its corresponding type declarations.
+components/ui/form.tsx(14,8): error TS2307: Cannot find module 'react-hook-form' or its corresponding type declarations.
+components/ui/resizable.tsx(5,37): error TS2307: Cannot find module 'react-resizable-panels' or its corresponding type declarations.
+components/ui/sonner.tsx(4,49): error TS2307: Cannot find module 'sonner' or its corresponding type declarations.

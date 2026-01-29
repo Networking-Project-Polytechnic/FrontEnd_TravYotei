@@ -18,32 +18,24 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, Clock } from "lucide-react"
-import { API_BASE_URL } from "@/lib/config"
-
-interface Trip {
-  trip_id: string
-  departure_time: string
-  arrival_time: string | null
-  status: string
-  route: {
-    origin_city: string
-    destination_city: string
-  }
-  bus: {
-    registration_number: string
-  }
-}
-
-interface Route {
-  route_id: string
-  origin_city: string
-  destination_city: string
-}
-
-interface Bus {
-  bus_id: string
-  registration_number: string
-}
+import {
+  getSchedulesByAgency,
+  createSchedule,
+  createAssignment,
+  updateSchedule,
+  deleteSchedule,
+  getRoutes,
+  getBuses,
+  Schedule,
+  Route,
+  Bus,
+  getLocations,
+  Location,
+  getDriversByAgency,
+  Driver,
+  getRoutePricesByAgency,
+  RoutePrice,
+} from "@/lib/api"
 
 const TRIP_STATUSES = ["SCHEDULED", "DELAYED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
 
@@ -64,10 +56,13 @@ const getStatusColor = (status: string) => {
   }
 }
 
-export function TripManagement() {
-  const [trips, setTrips] = useState<Trip[]>([])
+export function TripManagement({ agencyId }: { agencyId: string }) {
+  const [trips, setTrips] = useState<Schedule[]>([])
   const [routes, setRoutes] = useState<Route[]>([])
   const [buses, setBuses] = useState<Bus[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [prices, setPrices] = useState<RoutePrice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
@@ -75,59 +70,40 @@ export function TripManagement() {
   const [formData, setFormData] = useState({
     routeId: "",
     busId: "",
+    driverId: "",
+    priceId: "",
     departureTime: "",
     arrivalTime: "",
     status: "SCHEDULED",
   })
 
-  // DUMMY DATA: Using mock data for development/testing
-  const fetchAllData = () => {
+  // Derived state for the selected price
+  const selectedPrice = prices.find(
+    p => p.routeId === formData.routeId && p.busId === formData.busId
+  );
+
+  const fetchAllData = async () => {
     try {
       setLoading(true)
-      const mockRoutes: Route[] = [
-        { route_id: "1", origin_city: "Nairobi", destination_city: "Mombasa" },
-        { route_id: "2", origin_city: "Nairobi", destination_city: "Kisumu" },
-      ]
+      const [schedulesData, routesData, busesData, locationsData, driversData, pricesData] = await Promise.all([
+        getSchedulesByAgency(agencyId),
+        getRoutes(),
+        getBuses(),
+        getLocations(),
+        getDriversByAgency(agencyId),
+        getRoutePricesByAgency(agencyId),
+      ])
 
-      const mockBuses: Bus[] = [
-        { bus_id: "1", registration_number: "KE-100-ABC" },
-        { bus_id: "2", registration_number: "KE-101-XYZ" },
-      ]
-
-      const mockTrips: Trip[] = [
-        {
-          trip_id: "1",
-          departure_time: "2024-01-15T08:00:00",
-          arrival_time: "2024-01-15T17:00:00",
-          status: "COMPLETED",
-          route: mockRoutes[0],
-          bus: mockBuses[0],
-        },
-        {
-          trip_id: "2",
-          departure_time: "2024-01-16T06:30:00",
-          arrival_time: null,
-          status: "IN_PROGRESS",
-          route: mockRoutes[0],
-          bus: mockBuses[1],
-        },
-        {
-          trip_id: "3",
-          departure_time: "2024-01-17T10:00:00",
-          arrival_time: null,
-          status: "SCHEDULED",
-          route: mockRoutes[1],
-          bus: mockBuses[0],
-        },
-      ]
-
-      setTrips(mockTrips)
-      setRoutes(mockRoutes)
-      setBuses(mockBuses)
+      setTrips(schedulesData)
+      setRoutes(routesData)
+      setBuses(busesData)
+      setLocations(locationsData)
+      setDrivers(driversData)
+      setPrices(pricesData)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error loading dummy data:", err)
+      console.error("[TripManagement] Error loading data:", err)
     } finally {
       setLoading(false)
     }
@@ -137,10 +113,22 @@ export function TripManagement() {
     fetchAllData()
   }, [])
 
+  // Auto-update priceId in formData when routeId or busId changes
+  useEffect(() => {
+    if (selectedPrice) {
+      setFormData(prev => ({ ...prev, priceId: selectedPrice.priceId }));
+    } else {
+      setFormData(prev => ({ ...prev, priceId: "" }));
+    }
+  }, [selectedPrice?.priceId]); // Use specific ID dependency
+
+
   const resetForm = () => {
     setFormData({
       routeId: "",
       busId: "",
+      driverId: "",
+      priceId: "",
       departureTime: "",
       arrivalTime: "",
       status: "SCHEDULED",
@@ -148,16 +136,18 @@ export function TripManagement() {
     setEditingId(null)
   }
 
-  const handleOpen = (trip?: Trip) => {
+  const handleOpen = (trip?: Schedule) => {
     if (trip) {
       setFormData({
-        routeId: "",
-        busId: "",
-        departureTime: new Date(trip.departure_time).toISOString().slice(0, 16),
-        arrivalTime: trip.arrival_time ? new Date(trip.arrival_time).toISOString().slice(0, 16) : "",
-        status: trip.status,
+        routeId: trip.routeid,
+        busId: trip.busid,
+        driverId: trip.driverid || "",
+        priceId: trip.priceid || "",
+        departureTime: new Date(trip.departuretime).toISOString().slice(0, 16),
+        arrivalTime: trip.arrivaltime ? new Date(trip.arrivaltime).toISOString().slice(0, 16) : "",
+        status: "SCHEDULED",
       })
-      setEditingId(trip.trip_id)
+      setEditingId(trip.scheduleid)
     } else {
       resetForm()
     }
@@ -167,36 +157,54 @@ export function TripManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!formData.priceId) {
+      alert("No valid price found for this Route and Bus combination. Please configure a fare first.")
+      return;
+    }
+
+    if (!formData.driverId) {
+      alert("Please select a driver.")
+      return;
+    }
+
     try {
-      const payload = {
-        route_id: formData.routeId,
-        bus_id: formData.busId,
-        departure_time: formData.departureTime,
-        arrival_time: formData.arrivalTime || null,
-        status: formData.status,
+      const payload: Partial<Schedule> = {
+        routeid: formData.routeId,
+        busid: formData.busId,
+        driverid: formData.driverId,
+        priceid: formData.priceId,
+        departuretime: formData.departureTime,
+        arrivaltime: formData.arrivalTime || "",
+        date: new Date(formData.departureTime).toISOString().split('T')[0], // Extract YYYY-MM-DD
+        agencyid: agencyId,
       }
 
       if (editingId) {
-        const response = await fetch(`${API_BASE_URL}/trips/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...payload, trip_id: editingId }),
-        })
-        if (!response.ok) throw new Error("Failed to update trip")
+        await updateSchedule(editingId, payload)
       } else {
-        const response = await fetch(`${API_BASE_URL}/trips`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to create trip")
+        const newSchedule = await createSchedule(payload)
+
+        // Auto-create assignment if driver is selected
+        if (formData.driverId && newSchedule && newSchedule.scheduleid) {
+          try {
+            await createAssignment({
+              scheduleId: newSchedule.scheduleid,
+              driverId: formData.driverId,
+              agencyId: agencyId,
+              assignmentDate: newSchedule.date
+            } as any);
+          } catch (assignErr) {
+            console.error("Failed to auto-create assignment:", assignErr);
+            // Non-blocking error, user can assign manually later
+          }
+        }
       }
 
       await fetchAllData()
       setOpen(false)
       resetForm()
     } catch (err) {
-      console.error("[v0] Error saving trip:", err)
+      console.error("[TripManagement] Error saving trip:", err)
       alert("Failed to save trip. Please try again.")
     }
   }
@@ -205,13 +213,10 @@ export function TripManagement() {
     if (!confirm("Are you sure you want to delete this trip?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/trips/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("Failed to delete trip")
+      await deleteSchedule(id)
       await fetchAllData()
     } catch (err) {
-      console.error("[v0] Error deleting trip:", err)
+      console.error("[TripManagement] Error deleting trip:", err)
       alert("Failed to delete trip. Please try again.")
     }
   }
@@ -261,8 +266,12 @@ export function TripManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     {routes.map((route) => (
-                      <SelectItem key={route.route_id} value={route.route_id}>
-                        {route.origin_city} → {route.destination_city}
+                      <SelectItem key={route.routeid} value={route.routeid}>
+                        {(() => {
+                          const origin = locations.find(l => l.locationid === route.startlocationid)?.locationname || route.startlocationid;
+                          const dest = locations.find(l => l.locationid === route.endlocationid)?.locationname || route.endlocationid;
+                          return `${origin} → ${dest}`;
+                        })()}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -277,12 +286,48 @@ export function TripManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     {buses.map((bus) => (
-                      <SelectItem key={bus.bus_id} value={bus.bus_id}>
-                        {bus.registration_number}
+                      <SelectItem key={bus.busId} value={bus.busId}>
+                        {bus.registrationNumber}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="driverId">Driver *</Label>
+                <Select value={formData.driverId} onValueChange={(val) => setFormData({ ...formData, driverId: val })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select driver" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {drivers.map((driver) => (
+                      <SelectItem key={driver.driverId} value={driver.driverId}>
+                        {driver.fullName} ({driver.licenseNumber})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Price Display Section */}
+              <div className="space-y-2">
+                <Label>Price *</Label>
+                <div className="p-2 border rounded-md bg-muted/20">
+                  {formData.routeId && formData.busId ? (
+                    selectedPrice ? (
+                      <span className="text-green-600 font-bold">
+                        {selectedPrice.priceAmount} {selectedPrice.currency}
+                      </span>
+                    ) : (
+                      <span className="text-destructive font-medium text-sm flex items-center gap-2">
+                        ❌ No fare configured for this Route and Bus combination.
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-muted-foreground text-sm">Select Route and Bus to see price</span>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -349,7 +394,7 @@ export function TripManagement() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-green-600">
-              {trips.filter((t) => t.status === "IN_PROGRESS").length}
+              0
             </p>
           </CardContent>
         </Card>
@@ -358,7 +403,7 @@ export function TripManagement() {
             <CardTitle className="text-sm">Scheduled</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-blue-600">{trips.filter((t) => t.status === "SCHEDULED").length}</p>
+            <p className="text-3xl font-bold text-blue-600">{trips.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -366,7 +411,7 @@ export function TripManagement() {
             <CardTitle className="text-sm">Delayed</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-yellow-600">{trips.filter((t) => t.status === "DELAYED").length}</p>
+            <p className="text-3xl font-bold text-yellow-600">0</p>
           </CardContent>
         </Card>
       </div>
@@ -383,6 +428,7 @@ export function TripManagement() {
                 <TableRow>
                   <TableHead>Route</TableHead>
                   <TableHead>Bus</TableHead>
+                  <TableHead>Driver</TableHead>
                   <TableHead>Departure</TableHead>
                   <TableHead>Arrival</TableHead>
                   <TableHead>Status</TableHead>
@@ -391,15 +437,22 @@ export function TripManagement() {
               </TableHeader>
               <TableBody>
                 {trips.map((trip) => (
-                  <TableRow key={trip.trip_id}>
+                  <TableRow key={trip.scheduleid}>
                     <TableCell className="font-medium">
-                      {trip.route.origin_city} → {trip.route.destination_city}
+                      {(() => {
+                        const route = routes.find(r => r.routeid === trip.routeid);
+                        if (!route) return "Unknown Route";
+                        const origin = locations.find(l => l.locationid === route.startlocationid)?.locationname || route.startlocationid;
+                        const dest = locations.find(l => l.locationid === route.endlocationid)?.locationname || route.endlocationid;
+                        return `${origin} → ${dest}`;
+                      })()}
                     </TableCell>
-                    <TableCell>{trip.bus.registration_number}</TableCell>
-                    <TableCell>{new Date(trip.departure_time).toLocaleString()}</TableCell>
-                    <TableCell>{trip.arrival_time ? new Date(trip.arrival_time).toLocaleString() : "—"}</TableCell>
+                    <TableCell>{buses.find(b => b.busId === trip.busid)?.registrationNumber || "Unknown"}</TableCell>
+                    <TableCell>{drivers.find(d => d.driverId === trip.driverid)?.fullName || "Unknown"}</TableCell>
+                    <TableCell>{new Date(trip.departuretime).toLocaleString()}</TableCell>
+                    <TableCell>{trip.arrivaltime ? new Date(trip.arrivaltime).toLocaleString() : "—"}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(trip.status)}>{trip.status}</Badge>
+                      <Badge className={getStatusColor("SCHEDULED")}>Scheduled</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -409,7 +462,7 @@ export function TripManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(trip.trip_id)}
+                          onClick={() => handleDelete(trip.scheduleid)}
                           className="gap-1 text-destructive hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />

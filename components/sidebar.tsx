@@ -2,10 +2,10 @@
 
 import type React from "react"
 
-import { Bus, Users, RouteIcon, Calendar, UserCheck, DollarSign, MapPin } from "lucide-react"
+import { Bus, Users, RouteIcon, Calendar, UserCheck, DollarSign, MapPin, Settings2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-type Section = "buses" | "drivers" | "locations" | "routes" | "fares" | "trips" | "assignments"
+type Section = "buses" | "drivers" | "locations" | "routes" | "fares" | "trips" | "assignments" | "parameters"
 
 interface SidebarProps {
   activeSection: Section
@@ -20,6 +20,7 @@ const sections: { id: Section; label: string; icon: React.ComponentType<{ classN
   { id: "fares", label: "Fares", icon: DollarSign },
   { id: "trips", label: "Trips", icon: Calendar },
   { id: "assignments", label: "Assignments", icon: UserCheck },
+  { id: "parameters", label: "Bus Settings", icon: Settings2 },
 ]
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {

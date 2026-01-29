@@ -15,19 +15,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, CheckCircle, XCircle } from "lucide-react"
-import { createDriver, updateDriver, deleteDriver } from "@/lib/api"
+import { Plus, Edit2, Trash2, User } from "lucide-react"
+import {
+  getDriversByAgency,
+  createDriver,
+  updateDriver,
+  deleteDriver,
+  Driver,
+} from "@/lib/api"
 
-interface Driver {
-  driver_id: string
-  full_name: string
-  phone: string
-  license_number: string
-  license_expiry_date: string
-  active: boolean
-}
-
-export function DriverManagement() {
+export function DriverManagement({ agencyId }: { agencyId: string }) {
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -37,51 +34,18 @@ export function DriverManagement() {
     fullName: "",
     phone: "",
     licenseNumber: "",
-    licenseExpiry: "",
+    photo: null as File | null,
   })
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
-  const handlePhotoChange = (file: File | null) => {
-    setPhoto(file)
-    setPhotoPreview(file ? URL.createObjectURL(file) : null)
-  }
-
-  // DUMMY DATA: Using mock driver data for development/testing
-  const fetchDrivers = () => {
+  const fetchDrivers = async () => {
     try {
       setLoading(true)
-      const mockDrivers: Driver[] = [
-        {
-          driver_id: "1",
-          full_name: "John Kariuki",
-          phone: "+254712345678",
-          license_number: "DL-2024001",
-          license_expiry_date: "2025-12-31",
-          active: true,
-        },
-        {
-          driver_id: "2",
-          full_name: "Jane Mwangi",
-          phone: "+254723456789",
-          license_number: "DL-2024002",
-          license_expiry_date: "2026-06-30",
-          active: true,
-        },
-        {
-          driver_id: "3",
-          full_name: "Samuel Kipchoge",
-          phone: "+254734567890",
-          license_number: "DL-2023005",
-          license_expiry_date: "2024-08-15",
-          active: false,
-        },
-      ]
-      setDrivers(mockDrivers)
+      const data = await getDriversByAgency(agencyId)
+      setDrivers(data)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error loading dummy data:", err)
+      console.error("[DriverManagement] Error loading data:", err)
     } finally {
       setLoading(false)
     }
@@ -92,19 +56,19 @@ export function DriverManagement() {
   }, [])
 
   const resetForm = () => {
-    setFormData({ fullName: "", phone: "", licenseNumber: "", licenseExpiry: "" })
+    setFormData({ fullName: "", phone: "", licenseNumber: "", photo: null })
     setEditingId(null)
   }
 
   const handleOpen = (driver?: Driver) => {
     if (driver) {
       setFormData({
-        fullName: driver.full_name,
+        fullName: driver.fullName,
         phone: driver.phone,
-        licenseNumber: driver.license_number,
-        licenseExpiry: driver.license_expiry_date,
+        licenseNumber: driver.licenseNumber,
+        photo: null, // Photo cannot be pre-filled for security reasons
       })
-      setEditingId(driver.driver_id)
+      setEditingId(driver.driverId)
     } else {
       resetForm()
     }
@@ -115,26 +79,26 @@ export function DriverManagement() {
     e.preventDefault()
 
     try {
-      const payload = {
-        full_name: formData.fullName,
+      const payload: Partial<Driver> = {
+        fullName: formData.fullName,
         phone: formData.phone,
-        license_number: formData.licenseNumber,
-        license_expiry_date: formData.licenseExpiry,
+        licenseNumber: formData.licenseNumber,
+        agencyid: agencyId,
       }
 
+      const file = formData.photo ? (formData.photo as File) : undefined
+
       if (editingId) {
-        await updateDriver(editingId, payload, photo || undefined)
+        await updateDriver(editingId, payload, file)
       } else {
-        await createDriver(payload, photo || undefined)
+        await createDriver(payload, file)
       }
 
       await fetchDrivers()
       setOpen(false)
       resetForm()
-      setPhoto(null)
-      setPhotoPreview(null)
     } catch (err) {
-      console.error("[v0] Error saving driver:", err)
+      console.error("[DriverManagement] Error saving driver:", err)
       alert("Failed to save driver. Please try again.")
     }
   }
@@ -143,11 +107,10 @@ export function DriverManagement() {
     if (!confirm("Are you sure you want to delete this driver?")) return
 
     try {
-      const ok = await deleteDriver(id)
-      if (!ok) throw new Error('Failed to delete driver')
+      await deleteDriver(id)
       await fetchDrivers()
     } catch (err) {
-      console.error("[v0] Error deleting driver:", err)
+      console.error("[DriverManagement] Error deleting driver:", err)
       alert("Failed to delete driver. Please try again.")
     }
   }
@@ -222,26 +185,17 @@ export function DriverManagement() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="licenseExpiry">License Expiry Date</Label>
-                <Input
-                  id="licenseExpiry"
-                  type="date"
-                  value={formData.licenseExpiry}
-                  onChange={(e) => setFormData({ ...formData, licenseExpiry: e.target.value })}
-                />
-              </div>
 
               <div className="space-y-2">
-                <Label>Photo</Label>
-                <input
-                  id="driverPhoto"
+                <Label htmlFor="photo">Photo</Label>
+                <Input
+                  id="photo"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handlePhotoChange(e.target.files ? e.target.files[0] : null)}
+                  onChange={(e) => setFormData({ ...formData, photo: e.target.files ? e.target.files[0] : null })}
                 />
-                {photoPreview && (
-                  <img src={photoPreview} alt="photo-preview" className="w-20 h-20 object-cover rounded mt-2" />
+                {formData.photo && (
+                  <img src={URL.createObjectURL(formData.photo)} alt="photo-preview" className="w-20 h-20 object-cover rounded mt-2" />
                 )}
               </div>
 
@@ -266,31 +220,15 @@ export function DriverManagement() {
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>License Number</TableHead>
-                  <TableHead>License Expiry</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {drivers.map((driver) => (
-                  <TableRow key={driver.driver_id}>
-                    <TableCell className="font-medium">{driver.full_name}</TableCell>
+                  <TableRow key={driver.driverId}>
+                    <TableCell className="font-medium">{driver.fullName}</TableCell>
                     <TableCell>{driver.phone}</TableCell>
-                    <TableCell>{driver.license_number}</TableCell>
-                    <TableCell>{driver.license_expiry_date || "N/A"}</TableCell>
-                    <TableCell>
-                      {driver.active ? (
-                        <span className="flex items-center gap-1 text-green-600">
-                          <CheckCircle className="w-4 h-4" />
-                          Active
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-red-600">
-                          <XCircle className="w-4 h-4" />
-                          Inactive
-                        </span>
-                      )}
-                    </TableCell>
+                    <TableCell>{driver.licenseNumber}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => handleOpen(driver)} className="gap-1">
@@ -299,7 +237,7 @@ export function DriverManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(driver.driver_id)}
+                          onClick={() => handleDelete(driver.driverId)}
                           className="gap-1 text-destructive hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />

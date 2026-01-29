@@ -1,0 +1,12 @@
+[locations] First Item AgencyID: undefined (Total: 5)
+[locations] First Item Name/ID: {"locationid":"60000000-0000-0000-0000-000000000001","locationname":"Location 1","agencyid":"test-agency-id"}
+[routes] First Item AgencyID: undefined (Total: 5)
+[routes] First Item Name/ID: {"routeid":"b0000000-0000-0000-0000-000000000001","startlocationid":"60000000-0000-0000-0000-000000000001","endlocationid":"60000000-0000-0000-0000-000000000002","agencyid":"test-agency-id","stopPoints":["Stop A","Stop B"]}
+[drivers] First Item AgencyID: undefined (Total: 5)
+[drivers] First Item Name/ID: {"driverId":"90000000-0000-0000-0000-000000000001","fullName":"Driver 1","phone":"555-001","licenseNumber":"LIC-0001","agencyid":"test-agency-id"}
+[assignments] First Item AgencyID: test-agency-id (Total: 5)
+[assignments] First Item Name/ID: {"assignmentId":"e0000000-0000-0000-0000-000000000001","scheduleId":"d0000000-0000-0000-0000-000000000001","driverId":"90000000-0000-0000-0000-000000000001","agencyId":"test-agency-id","assignmentDate":"2026-02-01"}
+[bus-makes] First Item AgencyID: test-agency-id (Total: 5)
+[bus-makes] First Item Name/ID: {"busMakeId":"70000000-0000-0000-0000-000000000001","makeName":"Make 1","agencyId":"test-agency-id"}
+[bus-models] First Item AgencyID: test-agency-id (Total: 5)
+[bus-models] First Item Name/ID: {"busModelId":"80000000-0000-0000-0000-000000000001","modelName":"Model 1","agencyId":"test-agency-id"}

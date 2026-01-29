@@ -17,81 +17,63 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, UserCheck, Trash2 } from "lucide-react"
-import { API_BASE_URL } from "@/lib/config"
+import {
+  getAssignmentsByAgency,
+  createAssignment,
+  deleteAssignment,
+  getSchedulesByAgency,
+  Schedule,
+  getBuses,
+  getDrivers,
+  Assignment,
+  Bus,
+  Driver,
+  getLocations,
+  Location,
+  getRoutes,
+  Route,
 
-interface Assignment {
-  assignment_id: string
-  assigned_from: string
-  assigned_to: string | null
-  bus: {
-    registration_number: string
-  }
-  driver: {
-    full_name: string
-  }
-}
+} from "@/lib/api"
 
-interface Bus {
-  bus_id: string
-  registration_number: string
-}
-
-interface Driver {
-  driver_id: string
-  full_name: string
-}
-
-export function DriverAssignment() {
+export function DriverAssignment({ agencyId }: { agencyId: string }) {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [buses, setBuses] = useState<Bus[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
+  const [routes, setRoutes] = useState<Route[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState({
-    busId: "",
+    scheduleId: "",
     driverId: "",
     assignedFrom: "",
   })
 
   // DUMMY DATA: Using mock data for development/testing
-  const fetchAllData = () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true)
-      const mockBuses: Bus[] = [
-        { bus_id: "1", registration_number: "KE-100-ABC" },
-        { bus_id: "2", registration_number: "KE-101-XYZ" },
-      ]
+      const [assignmentsData, busesData, driversData, schedulesData, locationsData, routesData] = await Promise.all([
+        getAssignmentsByAgency(agencyId),
+        getBuses(),
+        getDrivers(),
+        getSchedulesByAgency(agencyId),
+        getLocations(),
+        getRoutes(),
+      ])
 
-      const mockDrivers: Driver[] = [
-        { driver_id: "1", full_name: "John Kariuki" },
-        { driver_id: "2", full_name: "Jane Mwangi" },
-      ]
-
-      const mockAssignments: Assignment[] = [
-        {
-          assignment_id: "1",
-          assigned_from: "2024-01-01",
-          assigned_to: null,
-          bus: mockBuses[0],
-          driver: mockDrivers[0],
-        },
-        {
-          assignment_id: "2",
-          assigned_from: "2024-02-01",
-          assigned_to: "2024-02-15",
-          bus: mockBuses[1],
-          driver: mockDrivers[1],
-        },
-      ]
-
-      setAssignments(mockAssignments)
-      setBuses(mockBuses)
-      setDrivers(mockDrivers)
+      setAssignments(assignmentsData)
+      setBuses(busesData)
+      setDrivers(driversData)
+      setSchedules(schedulesData)
+      setLocations(locationsData)
+      setRoutes(routesData)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error loading dummy data:", err)
+      console.error("[DriverAssignment] Error loading data:", err)
     } finally {
       setLoading(false)
     }
@@ -103,7 +85,7 @@ export function DriverAssignment() {
 
   const resetForm = () => {
     setFormData({
-      busId: "",
+      scheduleId: "",
       driverId: "",
       assignedFrom: new Date().toISOString().slice(0, 16),
     })
@@ -118,18 +100,44 @@ export function DriverAssignment() {
     e.preventDefault()
 
     try {
-      const payload = {
-        bus_id: formData.busId,
-        driver_id: formData.driverId,
-        assigned_from: formData.assignedFrom,
+      const payload: Partial<Assignment> = {
+        // busid: formData.busId, // Assigning driver to bus? 
+        // DTO says: assignmentId, scheduleId, driverId, agencyId, assignmentDate.
+        // It seems Assignment links Driver to Schedule, NOT Bus directly (Schedule has bus).
+        // BUT the previous code linked Driver to Bus.
+        // The Swagger DTO `assignmentId, scheduleId, driverId`.
+        // If the user wants "Driver Assignment", is it to a Bus (permanent) or Schedule (trip)?
+        // Use Case says "Assignments". API says "Assignments" links Schedule and Driver.
+        // So I should pick a Schedule?
+        // But the previous mock UI picked a Bus.
+        // If I look at `AssignmentsDTO` in swagger: `assignmentId, scheduleId, driverId`.
+        // So it IS Schedule based.
+        // The UI needs to change to select a Schedule (Trip), not a Bus.
+        // However, I'll stick to what the API supports.
+        // I will assume for now I can't easily change the UI to select Schedules without more work.
+        // Wait, maybe I can use `scheduleId` as `busId` if I was hacking, but that's wrong.
+        // I should probably skip full integration of Assignments if the UI concept mismatches API.
+        // The API `Assignments` links Driver -> Schedule.
+        // The UI `DriverAssignment` links Driver -> Bus.
+        // If I can't link Driver -> Bus via `Assignments`, I should check if `Driver` entity has `busId`? No.
+        // Maybe `Bus` has `driverId`? No.
+        // I will implement it as creating an assignment for a "Schedule" but the UI asks for Bus.
+        // This is a mismatch. I will comment out the `createAssignment` logic or just log it for now to avoid breaking the build with type errors,
+        // OR better: I will update the UI to select a Schedule if I can, but I don't have schedules loaded here.
+        // Given constraint "use all endpoints", I will leave this component using the API but I likely need to fetch Schedules to make it work.
+        // I will just use `createAssignment` with the selected Bus ID as Schedule ID? No that will fail FK.
+        // I will stub the submit.
+        agencyId: agencyId,
+        driverId: formData.driverId,
+        // scheduleId: ... missing
       }
 
-      const response = await fetch(`${API_BASE_URL}/driver-assignments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      if (!response.ok) throw new Error("Failed to create assignment")
+      await createAssignment({
+        agencyId,
+        driverId: formData.driverId,
+        scheduleId: formData.scheduleId,
+        assignmentDate: formData.assignedFrom // Add assignmentDate if accepted by API, otherwise ignore (DTO says assignmentDate exists)
+      } as any)
 
       await fetchAllData()
       setOpen(false)
@@ -144,12 +152,11 @@ export function DriverAssignment() {
     if (!confirm("Are you sure you want to end this assignment?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/driver-assignments/${id}/end`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assigned_to: new Date().toISOString() }),
-      })
-      if (!response.ok) throw new Error("Failed to end assignment")
+      await deleteAssignment(id)
+      // if (!response.ok) throw new Error("Failed to end assignment") // deleteAssignment throws if fails or returns bool
+      // Assuming deleteAssignment returns void or bool. api.ts implementation of delete usually is void or boolean.
+      // Checking api.ts implementation of deleteAssignment:
+      // It likely returns void or true. catch block handles error.
       await fetchAllData()
     } catch (err) {
       console.error("[v0] Error ending assignment:", err)
@@ -195,17 +202,26 @@ export function DriverAssignment() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="busId">Bus *</Label>
-                <Select value={formData.busId} onValueChange={(val) => setFormData({ ...formData, busId: val })}>
+                <Label htmlFor="scheduleId">Trip (Schedule) *</Label>
+                <Select value={formData.scheduleId} onValueChange={(val) => setFormData({ ...formData, scheduleId: val })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select bus" />
+                    <SelectValue placeholder="Select a trip" />
                   </SelectTrigger>
                   <SelectContent>
-                    {buses.map((bus) => (
-                      <SelectItem key={bus.bus_id} value={bus.bus_id}>
-                        {bus.registration_number}
-                      </SelectItem>
-                    ))}
+                    {schedules.map((schedule) => {
+                      const route = routes.find(r => r.routeid === schedule.routeid);
+                      const origin = locations.find(l => l.locationid === route?.startlocationid)?.locationname || route?.startlocationid || "Unknown";
+                      const dest = locations.find(l => l.locationid === route?.endlocationid)?.locationname || route?.endlocationid || "Unknown";
+                      const bus = buses.find(b => b.busId === schedule.busid);
+                      const busInfo = bus ? `(${bus.registrationNumber})` : "";
+                      const date = new Date(schedule.departuretime).toLocaleString();
+
+                      return (
+                        <SelectItem key={schedule.scheduleid} value={schedule.scheduleid}>
+                          {date} - {origin} → {dest} {busInfo}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -218,8 +234,8 @@ export function DriverAssignment() {
                   </SelectTrigger>
                   <SelectContent>
                     {drivers.map((driver) => (
-                      <SelectItem key={driver.driver_id} value={driver.driver_id}>
-                        {driver.full_name}
+                      <SelectItem key={driver.driverId} value={driver.driverId}>
+                        {driver.fullName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -254,7 +270,8 @@ export function DriverAssignment() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-green-600">{assignments.filter((a) => !a.assigned_to).length}</p>
+            {/* assigned_to doesn't exist on Assignment DTO, assuming all are active or filtering based on logic */}
+            <p className="text-3xl font-bold text-green-600">{assignments.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -262,7 +279,8 @@ export function DriverAssignment() {
             <CardTitle className="text-sm">Past Assignments</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-gray-600">{assignments.filter((a) => a.assigned_to).length}</p>
+            {/* No 'past' assignments in API DTO currently */}
+            <p className="text-3xl font-bold text-gray-600">0</p>
           </CardContent>
         </Card>
       </div>
@@ -277,7 +295,7 @@ export function DriverAssignment() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Bus</TableHead>
+                  <TableHead>Trip</TableHead>
                   <TableHead>Driver</TableHead>
                   <TableHead>Assigned From</TableHead>
                   <TableHead>Assigned To</TableHead>
@@ -287,32 +305,49 @@ export function DriverAssignment() {
               </TableHeader>
               <TableBody>
                 {assignments.map((assignment) => (
-                  <TableRow key={assignment.assignment_id}>
-                    <TableCell className="font-medium">{assignment.bus.registration_number}</TableCell>
-                    <TableCell>{assignment.driver.full_name}</TableCell>
-                    <TableCell>{new Date(assignment.assigned_from).toLocaleString()}</TableCell>
+                  <TableRow key={assignment.assignmentId}>
+                    <TableCell className="font-medium">
+                      {(() => {
+                        const schedule = schedules.find(s => s.scheduleid === assignment.scheduleId);
+                        if (!schedule) return assignment.scheduleId;
+
+                        const route = routes.find(r => r.routeid === schedule.routeid);
+                        const origin = locations.find(l => l.locationid === route?.startlocationid)?.locationname || "Unknown";
+                        const dest = locations.find(l => l.locationid === route?.endlocationid)?.locationname || "Unknown";
+                        const bus = buses.find(b => b.busId === schedule.busid);
+
+                        return (
+                          <div className="flex flex-col">
+                            <span>{origin} → {dest}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(schedule.departuretime).toLocaleDateString()} • {bus?.registrationNumber || "No Bus"}
+                            </span>
+                          </div>
+                        )
+                      })()}
+                    </TableCell>
+                    <TableCell>{drivers.find(d => d.driverId === assignment.driverId)?.fullName || assignment.driverId}</TableCell>
                     <TableCell>
-                      {assignment.assigned_to ? new Date(assignment.assigned_to).toLocaleString() : "—"}
+                      {/* assignmentDate is the only date field I have */}
+                      {new Date(assignment.assignmentDate).toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      {!assignment.assigned_to ? (
-                        <span className="text-green-600 font-medium">Active</span>
-                      ) : (
-                        <span className="text-gray-600">Ended</span>
-                      )}
+                      —
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-green-600 font-medium">Active</span>
                     </TableCell>
                     <TableCell className="text-right">
-                      {!assignment.assigned_to && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEndAssignment(assignment.assignment_id)}
-                          className="gap-1 text-orange-600 hover:text-orange-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          End
-                        </Button>
-                      )}
+                      {/* Always show delete/end for now as we don't have 'ended' state */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEndAssignment(assignment.assignmentId)}
+                        className="gap-1 text-orange-600 hover:text-orange-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        End
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

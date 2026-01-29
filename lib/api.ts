@@ -10,10 +10,10 @@ export type Agency = {
   reviewCount: number;
   yearsOperating: number;
   fleetSize: number;
-  routes: { 
-    name: string; 
-    standardPrice: number; 
-    vipPrice: number; 
+  routes: {
+    name: string;
+    standardPrice: number;
+    vipPrice: number;
     premiumPrice: number;
     duration: string;
     frequency: string;
@@ -494,230 +494,910 @@ export async function getAgencies(): Promise<Agency[]> {
 export async function getAgencyById(id: string): Promise<Agency | null> {
   console.log(`📡 [MOCK API] Récupération agence ID: ${id}`);
   await simulateNetworkDelay();
-  
+
   const agency = mockAgencies.find(agency => agency.id === id);
-  
+
   if (agency) {
     return agency;
   }
-  
+
   console.warn(`⚠️ Agence ID ${id} non trouvée`);
   return mockAgencies[0];
 }
 
 // Creation of packages
-export const create_package = async (packageData: {}) => {}
-// --- Fleet, Routes and Drivers API helpers ---
-import { API_BASE_URL } from './config'
+export const create_package = async (packageData: {}) => { }
+// API Base URL
+const API_BASE_URL = "http://localhost:8080"
 
-// Buses
-export const getBuses = async () => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/buses`)
-    if (!res.ok) throw new Error('Failed to fetch buses')
-    return await res.json()
-  } catch (error) {
-    console.error('getBuses error', error)
-    return []
-  }
+// --- TypeScript Interfaces (Matching Swagger DTOs) ---
+
+export interface BusAmenity {
+  amenityId: string
+  amenityName: string
+  description?: string
+  agencyId: string
 }
 
-export const createBus = async (busData: any, images?: File[]) => {
-  try {
-    // If images provided, use multipart/form-data
-    if (images && images.length > 0) {
-      const form = new FormData()
-      form.append('data', JSON.stringify(busData))
-      images.forEach((f) => form.append('images', f))
-      const res = await fetch(`${API_BASE_URL}/buses`, {
-        method: 'POST',
-        body: form,
-      })
-      if (!res.ok) throw new Error('Failed to create bus with images')
-      return await res.json()
-    }
-
-    const res = await fetch(`${API_BASE_URL}/buses`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(busData),
-    })
-    if (!res.ok) throw new Error('Failed to create bus')
-    return await res.json()
-  } catch (error) {
-    console.error('createBus error', error)
-    throw error
-  }
+export interface BusCanTransport {
+  transportId: string
+  itemName: string
+  description?: string
+  agencyId: string
 }
 
-export const updateBus = async (busId: string, busData: any, images?: File[]) => {
-  try {
-    if (images && images.length > 0) {
-      const form = new FormData()
-      form.append('data', JSON.stringify(busData))
-      images.forEach((f) => form.append('images', f))
-      const res = await fetch(`${API_BASE_URL}/buses/${busId}`, {
-        method: 'PUT',
-        body: form,
-      })
-      if (!res.ok) throw new Error('Failed to update bus with images')
-      return await res.json()
-    }
-
-    const res = await fetch(`${API_BASE_URL}/buses/${busId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(busData),
-    })
-    if (!res.ok) throw new Error('Failed to update bus')
-    return await res.json()
-  } catch (error) {
-    console.error('updateBus error', error)
-    throw error
-  }
+export interface BusReview {
+  reviewId: string
+  busId: string
+  customerName: string
+  rating: number
+  comment: string
+  createdAt: string
 }
 
-export const deleteBus = async (busId: string) => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/buses/${busId}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('Failed to delete bus')
-    return true
-  } catch (error) {
-    console.error('deleteBus error', error)
-    return false
-  }
+export interface BusImage {
+  imageId: string
+  busId: string
+  imageUrl: string
+  isPrimary: boolean
+  description?: string
+  s3BucketName?: string
+  s3Key?: string
+  fileName?: string
+  contentType?: string
+  fileSize?: number
+  uploadedAt?: string
 }
 
-// Routes
-export const getRoutes = async () => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/routes`)
-    if (!res.ok) throw new Error('Failed to fetch routes')
-    return await res.json()
-  } catch (error) {
-    console.error('getRoutes error', error)
-    return []
-  }
+export interface BusType {
+  busTypeId: string
+  busTypeName: string
+  agencyId: string
 }
 
-export const createRoute = async (routeData: any) => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/routes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(routeData),
-    })
-    if (!res.ok) throw new Error('Failed to create route')
-    return await res.json()
-  } catch (error) {
-    console.error('createRoute error', error)
-    throw error
-  }
+export interface BusMake {
+  busMakeId: string
+  makeName: string
+  agencyId: string
 }
 
-export const updateRoute = async (routeId: string, routeData: any) => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/routes/${routeId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(routeData),
-    })
-    if (!res.ok) throw new Error('Failed to update route')
-    return await res.json()
-  } catch (error) {
-    console.error('updateRoute error', error)
-    throw error
-  }
+export interface BusModel {
+  busModelId: string
+  modelName: string
+  agencyId: string
 }
 
-export const deleteRoute = async (routeId: string) => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/routes/${routeId}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('Failed to delete route')
-    return true
-  } catch (error) {
-    console.error('deleteRoute error', error)
-    return false
-  }
+export interface FuelType {
+  fuelTypeId: string
+  fuelTypeName: string
+  agencyId: string
 }
 
-// Drivers
-export const getDrivers = async () => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/drivers`)
-    if (!res.ok) throw new Error('Failed to fetch drivers')
-    return await res.json()
-  } catch (error) {
-    console.error('getDrivers error', error)
-    return []
-  }
+export interface Manufacturer {
+  manufacturerId: string
+  manufacturerName: string
+  agencyId: string
 }
 
-export const createDriver = async (driverData: any, photo?: File) => {
-  try {
-    if (photo) {
-      const form = new FormData()
-      form.append('data', JSON.stringify(driverData))
-      form.append('photo', photo)
-      const res = await fetch(`${API_BASE_URL}/drivers`, { method: 'POST', body: form })
-      if (!res.ok) throw new Error('Failed to create driver with photo')
-      return await res.json()
-    }
-
-    const res = await fetch(`${API_BASE_URL}/drivers`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(driverData),
-    })
-    if (!res.ok) throw new Error('Failed to create driver')
-    return await res.json()
-  } catch (error) {
-    console.error('createDriver error', error)
-    throw error
-  }
+export interface TransmissionType {
+  transmissionTypeId: string
+  typeName: string
+  agencyId: string
 }
 
-export const updateDriver = async (driverId: string, driverData: any, photo?: File) => {
-  try {
-    if (photo) {
-      const form = new FormData()
-      form.append('data', JSON.stringify(driverData))
-      form.append('photo', photo)
-      const res = await fetch(`${API_BASE_URL}/drivers/${driverId}`, { method: 'PUT', body: form })
-      if (!res.ok) throw new Error('Failed to update driver with photo')
-      return await res.json()
-    }
-
-    const res = await fetch(`${API_BASE_URL}/drivers/${driverId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(driverData),
-    })
-    if (!res.ok) throw new Error('Failed to update driver')
-    return await res.json()
-  } catch (error) {
-    console.error('updateDriver error', error)
-    throw error
-  }
+export interface Location {
+  locationid: string
+  locationname: string
+  agencyid: string
 }
 
-export const deleteDriver = async (driverId: string) => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/drivers/${driverId}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('Failed to delete driver')
-    return true
-  } catch (error) {
-    console.error('deleteDriver error', error)
-    return false
-  }
+export interface Route {
+  routeid: string
+  startlocationid: string
+  endlocationid: string
+  agencyid: string
+  stopPoints?: string[]
+}
+
+export interface RoutePrice {
+  priceId: string
+  routeId: string
+  busId: string
+  priceAmount: number
+  currency: string
+  agencyid: string
+}
+
+export interface Driver {
+  driverId: string
+  fullName: string
+  phone: string
+  licenseNumber: string
+  agencyid: string
+}
+
+export interface Schedule {
+  scheduleid: string
+  date: string
+  arrivaltime: string
+  departuretime: string
+  routeid: string
+  busid: string
+  agencyid: string
+  priceid: string
+  driverid: string
+}
+
+export interface Bus {
+  busId: string
+  registrationNumber: string
+  registrationExpiryDate?: string
+  totalSeats: number
+  mileageKm: number
+  busMakeId: string
+  busModelId: string
+  manufacturerId: string
+  fuelTypeId: string
+  transmissionTypeId: string
+  busTypeId: string
+  luggageCapacityKg: number
+  tankCapacityLiters: number
+  agencyId: string
+  amenities?: BusAmenity[]
+  canTransport?: BusCanTransport[]
+  reviews?: BusReview[]
+  images?: BusImage[]
+}
+
+// --- Real API Endpoints ---
+
+export interface DriverImage {
+  imageId: string
+  driverId: string
+  imageUrl: string
+  isPrimary: boolean
+  description?: string
+  s3BucketName?: string
+  s3Key?: string
+  fileName?: string
+  contentType?: string
+  fileSize?: number
+  uploadedAt?: string
+}
+
+export interface Assignment {
+  assignmentId: string
+  scheduleId: string
+  driverId: string
+  agencyId: string
+  assignmentDate: string
+}
+
+export interface ScheduleDetails extends Schedule {
+  bus: Bus
+  route: Route
+  price: RoutePrice
+  driver: Driver
+  busImages: BusImage[]
+  busReviews: BusReview[]
+  driverImages: DriverImage[]
+  stopPoints: string[]
+  startLocation: Location
+  endLocation: Location
+  busTypeName: string
+  busMakeName: string
+  busModelName: string
+}
+
+
+/**
+ * Fetch all data for an agency in one go (more efficient)
+ */
+export async function getAgencyOverview(agencyId: string) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/agencies/${agencyId}/overview`)
+  if (!response.ok) throw new Error("Failed to fetch agency overview")
+  return response.json()
+}
+
+export async function getBuses(): Promise<Bus[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses`)
+  if (!response.ok) throw new Error("Failed to fetch buses")
+  return response.json()
+}
+
+export async function getBusById(id: string): Promise<Bus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses/${id}`)
+  if (!response.ok) throw new Error(`Failed to fetch bus with id ${id}`)
+  return response.json()
+}
+
+export async function createBus(bus: Partial<Bus>, images?: File[]): Promise<Bus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(bus),
+  })
+  if (!response.ok) throw new Error("Failed to create bus")
+  return response.json()
+}
+
+export async function updateBus(id: string, bus: Partial<Bus>, images?: File[]): Promise<Bus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(bus),
+  })
+  if (!response.ok) throw new Error("Failed to update bus")
+  return response.json()
+}
+
+export async function deleteBus(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses/${id}`, {
+    method: "DELETE",
+  })
+  return response.ok
+}
+
+// --- Locations ---
+export async function getLocations(): Promise<Location[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createLocation(location: Partial<Location>): Promise<Location> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(location),
+  })
+  if (!response.ok) throw new Error("Failed to create location")
+  return response.json()
+}
+
+export async function updateLocation(id: string, location: Partial<Location>): Promise<Location> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(location),
+  })
+  if (!response.ok) throw new Error("Failed to update location")
+  return response.json()
+}
+
+export async function deleteLocation(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Routes ---
+export async function getRoutes(): Promise<Route[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createRoute(route: Partial<Route>): Promise<Route> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(route),
+  })
+  if (!response.ok) throw new Error("Failed to create route")
+  return response.json()
+}
+
+export async function updateRoute(id: string, route: Partial<Route>): Promise<Route> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(route),
+  })
+  if (!response.ok) throw new Error("Failed to update route")
+  return response.json()
+}
+
+export async function deleteRoute(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Drivers ---
+export async function getDrivers(): Promise<Driver[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createDriver(driver: Partial<Driver>, photo?: File): Promise<Driver> {
+  // Simple JSON for now, assuming photo is handled separately if needed
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(driver),
+  })
+  if (!response.ok) throw new Error("Failed to create driver")
+  return response.json()
+}
+
+export async function updateDriver(id: string, driver: Partial<Driver>, photo?: File): Promise<Driver> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(driver),
+  })
+  if (!response.ok) throw new Error("Failed to update driver")
+  return response.json()
+}
+
+export async function deleteDriver(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Schedules (Trips) ---
+export async function getSchedules(): Promise<Schedule[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createSchedule(schedule: Partial<Schedule>): Promise<Schedule> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(schedule),
+  })
+  if (!response.ok) throw new Error("Failed to create schedule")
+  return response.json()
+}
+
+export async function updateSchedule(id: string, schedule: Partial<Schedule>): Promise<Schedule> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(schedule),
+  })
+  if (!response.ok) throw new Error("Failed to update schedule")
+  return response.json()
+}
+
+export async function deleteSchedule(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Route Prices (Fares) ---
+export async function getRoutePrices(): Promise<RoutePrice[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/route-prices`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createRoutePrice(price: Partial<RoutePrice>): Promise<RoutePrice> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/route-prices`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(price),
+  })
+  if (!response.ok) throw new Error("Failed to create fare")
+  return response.json()
+}
+
+export async function updateRoutePrice(id: string, price: Partial<RoutePrice>): Promise<RoutePrice> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/route-prices/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(price),
+  })
+  if (!response.ok) throw new Error("Failed to update fare")
+  return response.json()
+}
+
+export async function deleteRoutePrice(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/route-prices/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Lookup Helpers ---
+
+export async function getBusMakes(): Promise<BusMake[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-makes`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createBusMake(make: Partial<BusMake>): Promise<BusMake> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-makes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(make),
+  })
+  if (!response.ok) throw new Error("Failed to create bus make")
+  return response.json()
+}
+
+export async function updateBusMake(id: string, make: Partial<BusMake>): Promise<BusMake> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-makes/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(make),
+  })
+  if (!response.ok) throw new Error("Failed to update bus make")
+  return response.json()
+}
+
+export async function deleteBusMake(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-makes/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function getBusModels(): Promise<BusModel[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-models`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createBusModel(model: Partial<BusModel>): Promise<BusModel> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-models`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(model),
+  })
+  if (!response.ok) throw new Error("Failed to create bus model")
+  return response.json()
+}
+
+export async function updateBusModel(id: string, model: Partial<BusModel>): Promise<BusModel> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-models/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(model),
+  })
+  if (!response.ok) throw new Error("Failed to update bus model")
+  return response.json()
+}
+
+export async function deleteBusModel(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-models/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function getManufacturers(): Promise<Manufacturer[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-manufacturers`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createManufacturer(man: Partial<Manufacturer>): Promise<Manufacturer> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-manufacturers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(man),
+  })
+  if (!response.ok) throw new Error("Failed to create manufacturer")
+  return response.json()
+}
+
+export async function updateManufacturer(id: string, man: Partial<Manufacturer>): Promise<Manufacturer> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-manufacturers/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(man),
+  })
+  if (!response.ok) throw new Error("Failed to update manufacturer")
+  return response.json()
+}
+
+export async function deleteManufacturer(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-manufacturers/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function getFuelTypes(): Promise<FuelType[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/fuel-types`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createFuelType(type: Partial<FuelType>): Promise<FuelType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/fuel-types`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(type),
+  })
+  if (!response.ok) throw new Error("Failed to create fuel type")
+  return response.json()
+}
+
+export async function updateFuelType(id: string, type: Partial<FuelType>): Promise<FuelType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/fuel-types/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(type),
+  })
+  if (!response.ok) throw new Error("Failed to update fuel type")
+  return response.json()
+}
+
+export async function deleteFuelType(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/fuel-types/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function getTransmissionTypes(): Promise<TransmissionType[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/transmission-types`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createTransmissionType(type: Partial<TransmissionType>): Promise<TransmissionType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/transmission-types`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(type),
+  })
+  if (!response.ok) throw new Error("Failed to create transmission type")
+  return response.json()
+}
+
+export async function updateTransmissionType(id: string, type: Partial<TransmissionType>): Promise<TransmissionType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/transmission-types/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(type),
+  })
+  if (!response.ok) throw new Error("Failed to update transmission type")
+  return response.json()
+}
+
+export async function deleteTransmissionType(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/transmission-types/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function getBusTypes(): Promise<BusType[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-types`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createBusType(type: Partial<BusType>): Promise<BusType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-types`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(type),
+  })
+  if (!response.ok) throw new Error("Failed to create bus type")
+  return response.json()
+}
+
+export async function updateBusType(id: string, type: Partial<BusType>): Promise<BusType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-types/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(type),
+  })
+  if (!response.ok) throw new Error("Failed to update bus type")
+  return response.json()
+}
+
+export async function deleteBusType(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-types/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function getVehicleAmenities(): Promise<BusAmenity[]> {
+  const response = await fetch(`${API_BASE_URL}/api/vehicle-amenities`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createVehicleAmenity(amenity: Partial<BusAmenity>): Promise<BusAmenity> {
+  const response = await fetch(`${API_BASE_URL}/api/vehicle-amenities`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(amenity),
+  })
+  if (!response.ok) throw new Error("Failed to create amenity")
+  return response.json()
+}
+
+export async function updateVehicleAmenity(id: string, amenity: Partial<BusAmenity>): Promise<BusAmenity> {
+  const response = await fetch(`${API_BASE_URL}/api/vehicle-amenities/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(amenity),
+  })
+  if (!response.ok) throw new Error("Failed to update amenity")
+  return response.json()
+}
+
+export async function deleteVehicleAmenity(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/vehicle-amenities/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function getBusTransportables(): Promise<BusCanTransport[]> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-transportables`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createBusTransportable(item: Partial<BusCanTransport>): Promise<BusCanTransport> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-transportables`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(item),
+  })
+  if (!response.ok) throw new Error("Failed to create transportable item")
+  return response.json()
+}
+
+export async function updateBusTransportable(id: string, item: Partial<BusCanTransport>): Promise<BusCanTransport> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-transportables/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(item),
+  })
+  if (!response.ok) throw new Error("Failed to update transportable item")
+  return response.json()
+}
+
+export async function deleteBusTransportable(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-transportables/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Agency Scoped Getters & Extra Endpoints ---
+
+export async function getBusesByAgency(agencyId: string): Promise<Bus[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getBusByRegistrationNumber(registrationNumber: string): Promise<Bus | null> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses/registration/${registrationNumber}`)
+  if (!response.ok) return null
+  return response.json()
+}
+
+
+
+export async function getDriversByAgency(agencyId: string): Promise<Driver[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getDriverByFullName(fullName: string): Promise<Driver | null> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers/name/${fullName}`)
+  if (!response.ok) return null
+  return response.json()
+}
+
+export async function getDriverByLicenseNumber(licenseNumber: string): Promise<Driver | null> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers/license/${licenseNumber}`)
+  if (!response.ok) return null
+  return response.json()
+}
+
+export async function getRoutesByAgency(agencyId: string): Promise<Route[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getLocationsByAgency(agencyId: string): Promise<Location[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getLocationByName(locationName: string): Promise<Location | null> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations/name/${locationName}`)
+  if (!response.ok) return null
+  return response.json()
+}
+
+export async function getSchedulesByAgency(agencyId: string): Promise<Schedule[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getSchedulesByDate(date: string): Promise<Schedule[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/date/${date}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getSchedulesByBus(busId: string): Promise<Schedule[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/bus/${busId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getSchedulesByRoute(routeId: string): Promise<Schedule[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/route/${routeId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getScheduleDetails(scheduleId: string): Promise<ScheduleDetails> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/${scheduleId}/details`)
+  if (!response.ok) throw new Error("Failed to fetch schedule details")
+  return response.json()
+}
+
+export async function getRoutePricesByAgency(agencyId: string): Promise<RoutePrice[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/route-prices/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getBusMakesByAgency(agencyId: string): Promise<BusMake[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-makes/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getBusModelsByAgency(agencyId: string): Promise<BusModel[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-models/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getManufacturersByAgency(agencyId: string): Promise<Manufacturer[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-manufacturers/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getFuelTypesByAgency(agencyId: string): Promise<FuelType[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/fuel-types/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getTransmissionTypesByAgency(agencyId: string): Promise<TransmissionType[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/transmission-types/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getBusTypesByAgency(agencyId: string): Promise<BusType[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-types/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getVehicleAmenitiesByAgency(agencyId: string): Promise<BusAmenity[]> {
+  const response = await fetch(`${API_BASE_URL}/api/vehicle-amenities/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getTransportablesByAgency(agencyId: string): Promise<BusCanTransport[]> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-transportables/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+// --- Driver Images ---
+
+export async function getDriverImages(driverId: string): Promise<DriverImage[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/driver-images/driver/${driverId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getPrimaryDriverImage(driverId: string): Promise<DriverImage | null> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/driver-images/driver/${driverId}/primary`)
+  if (!response.ok) return null
+  return response.json()
+}
+
+// NOTE: Creating images usually involves FormData. This is a placeholder signature.
+export async function deleteDriverImage(imageId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/driver-images/${imageId}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Bus Images ---
+
+export async function getBusImages(busId: string): Promise<BusImage[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-images/bus/${busId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getPrimaryBusImage(busId: string): Promise<BusImage | null> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-images/bus/${busId}/primary`)
+  if (!response.ok) return null
+  return response.json()
+}
+
+export async function deleteBusImage(imageId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-images/${imageId}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Assignments ---
+
+export async function getAssignments(): Promise<Assignment[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/assignments`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getAssignmentsByAgency(agencyId: string): Promise<Assignment[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/assignments/agency/${agencyId}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createAssignment(assignment: Partial<Assignment>): Promise<Assignment> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/assignments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(assignment),
+  })
+  if (!response.ok) throw new Error("Failed to create assignment")
+  return response.json()
+}
+
+export async function updateAssignment(id: string, assignment: Partial<Assignment>): Promise<Assignment> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/assignments/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(assignment),
+  })
+  if (!response.ok) throw new Error("Failed to update assignment")
+  return response.json()
+}
+
+export async function deleteAssignment(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/assignments/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Bus Reviews ---
+
+export async function getBusReviews(): Promise<BusReview[]> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-reviews`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function createBusReview(review: Partial<BusReview>): Promise<BusReview> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-reviews`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(review),
+  })
+  if (!response.ok) throw new Error("Failed to create review")
+  return response.json()
+}
+
+export async function deleteBusReview(id: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-reviews/${id}`, { method: "DELETE" })
+  return response.ok
 }
 
 // Fonctions mockées utiles (si besoin ailleurs dans l'app)
-export const login = async () => ({ token: "mock-token" });
-export const signup = async () => ({ success: true });
-export const signup_agency = async () => ({ success: true });
-export const login_admin = async () => ({ token: "mock-admin-token" });
-export const signup_admin = async () => ({ success: true });
-export const getTrackingByCode = async () => ({ status: "EN TRANSIT" });
-export const getTrackingHistory = async () => [];
-export const updateTracking = async () => ({ success: true });
+
+export const login = async (...args: any[]) => ({ token: "mock-token" });
+export const signup = async (...args: any[]) => ({ success: true });
+export const signup_agency = async (...args: any[]) => ({ success: true });
+export const login_admin = async (...args: any[]) => ({ token: "mock-admin-token" });
+export const signup_admin = async (...args: any[]) => ({ success: true });
+export const getTrackingByCode = async (...args: any[]) => ({
+  status: "EN TRANSIT",
+  bus_id: "mock-bus-id",
+  start: [0, 0],
+  end: [1, 1]
+});
+export const getTrackingHistory = async (...args: any[]) => [];
+export const updateTracking = async (...args: any[]) => ({ success: true });

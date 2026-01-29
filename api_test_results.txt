@@ -1,0 +1,40 @@
+🚀 Starting API Tests...
+
+✅ [SUCCESS] getBuses: Found 5 items
+✅ [SUCCESS] getLocations: Found 5 items
+ℹ️  Using Agency ID from first bus: 00000000-0000-0000-0000-000000000000
+
+--- Global Lookup Endpoints ---
+✅ [SUCCESS] getRoutes: Found 5 items
+✅ [SUCCESS] getSchedules: Found 5 items
+✅ [SUCCESS] getRoutePrices: Found 5 items
+✅ [SUCCESS] getBusMakes: Found 5 items
+✅ [SUCCESS] getBusModels: Found 5 items
+✅ [SUCCESS] getManufacturers: Found 5 items
+✅ [SUCCESS] getFuelTypes: Found 5 items
+✅ [SUCCESS] getTransmissionTypes: Found 5 items
+✅ [SUCCESS] getBusTypes: Found 5 items
+✅ [SUCCESS] getVehicleAmenities: Found 5 items
+✅ [SUCCESS] getBusTransportables: Found 4 items
+✅ [SUCCESS] getAssignments: Found 5 items
+✅ [SUCCESS] getBusReviews: Found 0 items
+
+--- Agency Scoped Endpoints (Agency ID: 00000000-0000-0000-0000-000000000000) ---
+✅ [SUCCESS] getAgencyOverview: Found 1 items
+✅ [SUCCESS] getBusesByAgency: Found 5 items
+✅ [SUCCESS] getDriversByAgency: Found 0 items
+✅ [SUCCESS] getRoutesByAgency: Found 0 items
+✅ [SUCCESS] getLocationsByAgency: Found 0 items
+✅ [SUCCESS] getSchedulesByAgency: Found 0 items
+✅ [SUCCESS] getRoutePricesByAgency: Found 0 items
+✅ [SUCCESS] getBusMakesByAgency: Found 0 items
+✅ [SUCCESS] getBusModelsByAgency: Found 0 items
+✅ [SUCCESS] getManufacturersByAgency: Found 0 items
+✅ [SUCCESS] getFuelTypesByAgency: Found 0 items
+✅ [SUCCESS] getTransmissionTypesByAgency: Found 0 items
+✅ [SUCCESS] getBusTypesByAgency: Found 0 items
+✅ [SUCCESS] getVehicleAmenitiesByAgency: Found 0 items
+✅ [SUCCESS] getTransportablesByAgency: Found 0 items
+✅ [SUCCESS] getAssignmentsByAgency: Found 0 items
+
+🏁  Tests Completed.

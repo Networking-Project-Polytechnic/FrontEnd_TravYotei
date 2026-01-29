@@ -18,64 +18,68 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, CheckCircle, XCircle } from "lucide-react"
-import { createBus, updateBus, deleteBus } from "@/lib/api"
+import {
+  getBusesByAgency,
+  getBusById,
+  createBus,
+  updateBus,
+  deleteBus,
+  getBusMakes,
+  getBusModels,
+  getManufacturers,
+  getFuelTypes,
+  getTransmissionTypes,
+  getBusTypes,
+  getVehicleAmenities,
+  getBusTransportables,
+  Bus,
+  BusMake,
+  BusModel,
+  Manufacturer,
+  FuelType,
+  TransmissionType,
+  BusType,
+  BusAmenity,
+  BusCanTransport,
+  BusReview
+} from "@/lib/api"
 
-interface Bus {
-  bus_id: string
-  registration_number: string
-  seat_count: number
-  mileage_km: number
-  in_service: boolean
-  bus_make: { make_name: string }
-  bus_model: { model_name: string }
-  bus_manufacturer: { manufacturer_name: string }
-  fuel_type: { fuel_type_name: string }
-  transmission_type: { type_name: string }
-  amenities: string[]
-}
-
-interface BusMake {
-  bus_make_id: string
-  make_name: string
-}
-
-interface BusModel {
-  bus_model_id: string
-  model_name: string
-}
-
-interface BusManufacturer {
-  bus_manufacturer_id: string
-  manufacturer_name: string
-}
-
-const AMENITIES = ["AC", "WIFI", "TV", "WC", "USB_CHARGING", "RECLINING_SEATS"]
-const FUEL_TYPES = ["DIESEL", "PETROL", "ELECTRIC", "HYBRID"]
-const TRANSMISSION_TYPES = ["MANUAL", "AUTOMATIC"]
-
-export function BusManagement() {
+export function BusManagement({ agencyId }: { agencyId: string }) {
   const [buses, setBuses] = useState<Bus[]>([])
   const [makes, setMakes] = useState<BusMake[]>([])
   const [models, setModels] = useState<BusModel[]>([])
-  const [manufacturers, setManufacturers] = useState<BusManufacturer[]>([])
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
+  const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
+  const [transmissionTypes, setTransmissionTypes] = useState<TransmissionType[]>([])
+  const [busTypes, setBusTypes] = useState<BusType[]>([])
+  const [availableAmenities, setAvailableAmenities] = useState<BusAmenity[]>([])
+  const [availableTransportables, setAvailableTransportables] = useState<BusCanTransport[]>([])
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+
   const [formData, setFormData] = useState({
     registrationNumber: "",
-    seatCount: "",
-    makeId: "",
-    modelId: "",
+    registrationExpiryDate: "",
+    totalSeats: "",
+    busMakeId: "",
+    busModelId: "",
     manufacturerId: "",
-    fuelType: "",
-    transmissionType: "",
-    chassisNumber: "",
-    luggage: "",
-    fuelTank: "",
-    mileage: "",
-    amenities: [] as string[],
+    fuelTypeId: "",
+    transmissionTypeId: "",
+    busTypeId: "",
+    luggageCapacityKg: "",
+    tankCapacityLiters: "",
+    mileageKm: "",
+    agencyId: agencyId, // From props
+    amenities: [] as string[], // We will store IDs here
+    canTransport: [] as string[], // We will store IDs here
   })
+
+  const [currentReviews, setCurrentReviews] = useState<BusReview[]>([])
+
   const [images, setImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
 
@@ -88,69 +92,44 @@ export function BusManagement() {
     setImagePreviews(previews)
   }
 
-  // DUMMY DATA: Using mock data for development/testing
-  const fetchAll = () => {
+  const fetchAll = async () => {
     try {
       setLoading(true)
-      // Mock bus makes data
-      const mockMakes: BusMake[] = [
-        { bus_make_id: "1", make_name: "Volvo" },
-        { bus_make_id: "2", make_name: "Mercedes" },
-        { bus_make_id: "3", make_name: "Scania" },
-      ]
+      const [
+        busesData,
+        makesData,
+        modelsData,
+        manufacturersData,
+        fuelTypesData,
+        transmissionTypesData,
+        busTypesData,
+        amenitiesData,
+        transportablesData
+      ] = await Promise.all([
+        getBusesByAgency(agencyId),
+        getBusMakes(),
+        getBusModels(),
+        getManufacturers(),
+        getFuelTypes(),
+        getTransmissionTypes(),
+        getBusTypes(),
+        getVehicleAmenities(),
+        getBusTransportables()
+      ])
 
-      // Mock bus models data
-      const mockModels: BusModel[] = [
-        { bus_model_id: "1", model_name: "B11R" },
-        { bus_model_id: "2", model_name: "Sprinter" },
-        { bus_model_id: "3", model_name: "K440" },
-      ]
-
-      // Mock bus manufacturers data
-      const mockManufacturers: BusManufacturer[] = [
-        { bus_manufacturer_id: "1", manufacturer_name: "Volvo Buses" },
-        { bus_manufacturer_id: "2", manufacturer_name: "Daimler" },
-        { bus_manufacturer_id: "3", manufacturer_name: "Scania AB" },
-      ]
-
-      // Mock buses data
-      const mockBuses: Bus[] = [
-        {
-          bus_id: "1",
-          registration_number: "KE-100-ABC",
-          seat_count: 50,
-          mileage_km: 15000,
-          in_service: true,
-          bus_make: mockMakes[0],
-          bus_model: mockModels[0],
-          bus_manufacturer: mockManufacturers[0],
-          fuel_type: { fuel_type_name: "DIESEL" },
-          transmission_type: { type_name: "MANUAL" },
-          amenities: ["AC", "WIFI", "USB_CHARGING"],
-        },
-        {
-          bus_id: "2",
-          registration_number: "KE-101-XYZ",
-          seat_count: 45,
-          mileage_km: 8500,
-          in_service: true,
-          bus_make: mockMakes[1],
-          bus_model: mockModels[1],
-          bus_manufacturer: mockManufacturers[1],
-          fuel_type: { fuel_type_name: "DIESEL" },
-          transmission_type: { type_name: "AUTOMATIC" },
-          amenities: ["AC", "TV", "WC", "RECLINING_SEATS"],
-        },
-      ]
-
-      setBuses(mockBuses)
-      setMakes(mockMakes)
-      setModels(mockModels)
-      setManufacturers(mockManufacturers)
+      setBuses(busesData)
+      setMakes(makesData)
+      setModels(modelsData)
+      setManufacturers(manufacturersData)
+      setFuelTypes(fuelTypesData)
+      setTransmissionTypes(transmissionTypesData)
+      setBusTypes(busTypesData)
+      setAvailableAmenities(amenitiesData)
+      setAvailableTransportables(transportablesData)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error loading dummy data:", err)
+      console.error("[BusManagement] Error loading data:", err)
     } finally {
       setLoading(false)
     }
@@ -163,38 +142,56 @@ export function BusManagement() {
   const resetForm = () => {
     setFormData({
       registrationNumber: "",
-      seatCount: "",
-      makeId: "",
-      modelId: "",
+      registrationExpiryDate: "",
+      totalSeats: "",
+      busMakeId: "",
+      busModelId: "",
       manufacturerId: "",
-      fuelType: "",
-      transmissionType: "",
-      chassisNumber: "",
-      luggage: "",
-      fuelTank: "",
-      mileage: "",
+      fuelTypeId: "",
+      transmissionTypeId: "",
+      busTypeId: "",
+      luggageCapacityKg: "",
+      tankCapacityLiters: "",
+      mileageKm: "",
+      agencyId: agencyId,
       amenities: [],
+      canTransport: [],
     })
     setEditingId(null)
+    setCurrentReviews([])
+    setImages([])
+    setImagePreviews([])
   }
 
-  const handleOpen = (bus?: Bus) => {
+  const handleOpen = async (bus?: Bus) => {
     if (bus) {
-      setFormData({
-        registrationNumber: bus.registration_number,
-        seatCount: bus.seat_count.toString(),
-        makeId: "",
-        modelId: "",
-        manufacturerId: "",
-        fuelType: bus.fuel_type.fuel_type_name,
-        transmissionType: bus.transmission_type.type_name,
-        chassisNumber: "",
-        luggage: "",
-        fuelTank: "",
-        mileage: bus.mileage_km.toString(),
-        amenities: bus.amenities || [],
-      })
-      setEditingId(bus.bus_id)
+      // Fetch full bus details to include reviews, etc.
+      const fullBus = await getBusById(bus.busId)
+      if (fullBus) {
+        setFormData({
+          registrationNumber: fullBus.registrationNumber,
+          registrationExpiryDate: fullBus.registrationExpiryDate || "",
+          totalSeats: fullBus.totalSeats?.toString() || "",
+          busMakeId: fullBus.busMakeId,
+          busModelId: fullBus.busModelId,
+          manufacturerId: fullBus.manufacturerId,
+          fuelTypeId: fullBus.fuelTypeId,
+          transmissionTypeId: fullBus.transmissionTypeId,
+          busTypeId: fullBus.busTypeId,
+          luggageCapacityKg: fullBus.luggageCapacityKg?.toString() || "",
+          tankCapacityLiters: fullBus.tankCapacityLiters?.toString() || "",
+          mileageKm: fullBus.mileageKm?.toString() || "",
+          agencyId: fullBus.agencyId,
+          amenities: fullBus.amenities?.map(a => a.amenityId) || [],
+          canTransport: fullBus.canTransport?.map(t => t.transportId) || [],
+        })
+        setEditingId(fullBus.busId)
+        setCurrentReviews(fullBus.reviews || [])
+
+        if (fullBus.images) {
+          setImagePreviews(fullBus.images.map(img => img.imageUrl))
+        }
+      }
     } else {
       resetForm()
     }
@@ -205,19 +202,33 @@ export function BusManagement() {
     e.preventDefault()
 
     try {
-      const payload = {
-        registration_number: formData.registrationNumber,
-        seat_count: Number.parseInt(formData.seatCount),
-        bus_make_id: formData.makeId,
-        bus_model_id: formData.modelId,
-        bus_manufacturer_id: formData.manufacturerId,
-        fuel_type: formData.fuelType,
-        transmission_type: formData.transmissionType,
-        chassis_number: formData.chassisNumber,
-        luggage_capacity_kg: formData.luggage ? Number.parseFloat(formData.luggage) : null,
-        fuel_tank_capacity_l: formData.fuelTank ? Number.parseFloat(formData.fuelTank) : null,
-        mileage_km: formData.mileage ? Number.parseFloat(formData.mileage) : 0,
-        amenities: formData.amenities,
+      const payload: Partial<Bus> = {
+        registrationNumber: formData.registrationNumber,
+        registrationExpiryDate: formData.registrationExpiryDate,
+        totalSeats: Number.parseInt(formData.totalSeats),
+        busMakeId: formData.busMakeId,
+        busModelId: formData.busModelId,
+        manufacturerId: formData.manufacturerId,
+        fuelTypeId: formData.fuelTypeId,
+        transmissionTypeId: formData.transmissionTypeId,
+        busTypeId: formData.busTypeId,
+        luggageCapacityKg: formData.luggageCapacityKg ? Number.parseFloat(formData.luggageCapacityKg) : 0,
+        tankCapacityLiters: formData.tankCapacityLiters ? Number.parseFloat(formData.tankCapacityLiters) : 0,
+        mileageKm: formData.mileageKm ? Number.parseFloat(formData.mileageKm) : 0,
+        agencyId: formData.agencyId,
+        // Map IDs back to objects for the API (if the API expects objects in the POST body)
+        amenities: formData.amenities.map(id => ({
+          amenityId: id,
+          amenityName: availableAmenities.find(a => a.amenityId === id)?.amenityName || "",
+          description: "",
+          agencyId: formData.agencyId,
+        })),
+        canTransport: formData.canTransport.map(id => ({
+          transportId: id,
+          itemName: availableTransportables.find(t => t.transportId === id)?.itemName || "",
+          description: "",
+          agencyId: formData.agencyId,
+        })),
       }
 
       if (editingId) {
@@ -229,10 +240,8 @@ export function BusManagement() {
       await fetchAll()
       setOpen(false)
       resetForm()
-      setImages([])
-      setImagePreviews([])
     } catch (err) {
-      console.error("[v0] Error saving bus:", err)
+      console.error("[BusManagement] Error saving bus:", err)
       alert("Failed to save bus. Please try again.")
     }
   }
@@ -241,28 +250,36 @@ export function BusManagement() {
     if (!confirm("Are you sure you want to delete this bus?")) return
 
     try {
-      const ok = await deleteBus(id)
-      if (!ok) throw new Error('Failed to delete bus')
+      await deleteBus(id)
       await fetchAll()
     } catch (err) {
-      console.error("[v0] Error deleting bus:", err)
+      console.error("[BusManagement] Error deleting bus:", err)
       alert("Failed to delete bus. Please try again.")
     }
   }
 
-  const toggleAmenity = (amenity: string) => {
+  const toggleAmenity = (id: string) => {
     setFormData((prev) => ({
       ...prev,
-      amenities: prev.amenities.includes(amenity)
-        ? prev.amenities.filter((a) => a !== amenity)
-        : [...prev.amenities, amenity],
+      amenities: prev.amenities.includes(id)
+        ? prev.amenities.filter((a) => a !== id)
+        : [...prev.amenities, id],
+    }))
+  }
+
+  const toggleTransport = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      canTransport: prev.canTransport.includes(id)
+        ? prev.canTransport.filter((i) => i !== id)
+        : [...prev.canTransport, id],
     }))
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Loading buses...</p>
+        <p className="text-muted-foreground">Loading fleet data...</p>
       </div>
     )
   }
@@ -276,12 +293,18 @@ export function BusManagement() {
     )
   }
 
+  // Helpers to get names from IDs
+  const getMakeName = (id: string) => makes.find(m => m.busMakeId === id)?.makeName || id
+  const getModelName = (id: string) => models.find(m => m.busModelId === id)?.modelName || id
+  const getFuelName = (id: string) => fuelTypes.find(f => f.fuelTypeId === id)?.fuelTypeName || id
+  const getTransmissionName = (id: string) => transmissionTypes.find(t => t.transmissionTypeId === id)?.typeName || id
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Bus Fleet Management</h2>
-          <p className="text-muted-foreground mt-2">Manage your fleet with detailed specifications</p>
+          <h2 className="text-3xl font-bold text-foreground">Fleet Management</h2>
+          <p className="text-muted-foreground mt-2">Monitor and manage your vehicle fleet</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -292,9 +315,9 @@ export function BusManagement() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Bus" : "Add New Bus"}</DialogTitle>
+              <DialogTitle>{editingId ? "Edit Bus Details" : "Register New Bus"}</DialogTitle>
               <DialogDescription>
-                {editingId ? "Update bus information" : "Enter the details of the new bus"}
+                {editingId ? "Modify bus specifications and status" : "Enter technical details for the new fleet entry"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -310,30 +333,57 @@ export function BusManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="seatCount">Seat Count *</Label>
+                  <Label htmlFor="registrationExpiryDate">Reg. Expiry Date</Label>
                   <Input
-                    id="seatCount"
+                    id="registrationExpiryDate"
+                    type="date"
+                    value={formData.registrationExpiryDate}
+                    onChange={(e) => setFormData({ ...formData, registrationExpiryDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="totalSeats">Total Seats *</Label>
+                  <Input
+                    id="totalSeats"
                     type="number"
-                    min="10"
-                    value={formData.seatCount}
-                    onChange={(e) => setFormData({ ...formData, seatCount: e.target.value })}
+                    min="1"
+                    value={formData.totalSeats}
+                    onChange={(e) => setFormData({ ...formData, totalSeats: e.target.value })}
                     placeholder="e.g., 50"
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="busTypeId">Bus Type *</Label>
+                  <Select value={formData.busTypeId} onValueChange={(val) => setFormData({ ...formData, busTypeId: val })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {busTypes.map((type) => (
+                        <SelectItem key={type.busTypeId} value={type.busTypeId}>
+                          {type.busTypeName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="makeId">Bus Make *</Label>
-                  <Select value={formData.makeId} onValueChange={(val) => setFormData({ ...formData, makeId: val })}>
+                  <Label htmlFor="busMakeId">Make *</Label>
+                  <Select value={formData.busMakeId} onValueChange={(val) => setFormData({ ...formData, busMakeId: val })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select make" />
                     </SelectTrigger>
                     <SelectContent>
                       {makes.map((make) => (
-                        <SelectItem key={make.bus_make_id} value={make.bus_make_id}>
-                          {make.make_name}
+                        <SelectItem key={make.busMakeId} value={make.busMakeId}>
+                          {make.makeName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -341,15 +391,15 @@ export function BusManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="modelId">Bus Model *</Label>
-                  <Select value={formData.modelId} onValueChange={(val) => setFormData({ ...formData, modelId: val })}>
+                  <Label htmlFor="busModelId">Model *</Label>
+                  <Select value={formData.busModelId} onValueChange={(val) => setFormData({ ...formData, busModelId: val })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select model" />
                     </SelectTrigger>
                     <SelectContent>
                       {models.map((model) => (
-                        <SelectItem key={model.bus_model_id} value={model.bus_model_id}>
-                          {model.model_name}
+                        <SelectItem key={model.busModelId} value={model.busModelId}>
+                          {model.modelName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -366,9 +416,9 @@ export function BusManagement() {
                       <SelectValue placeholder="Select manufacturer" />
                     </SelectTrigger>
                     <SelectContent>
-                      {manufacturers.map((manufacturer) => (
-                        <SelectItem key={manufacturer.bus_manufacturer_id} value={manufacturer.bus_manufacturer_id}>
-                          {manufacturer.manufacturer_name}
+                      {manufacturers.map((m) => (
+                        <SelectItem key={m.manufacturerId} value={m.manufacturerId}>
+                          {m.manufacturerName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -378,18 +428,18 @@ export function BusManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fuelType">Fuel Type *</Label>
+                  <Label htmlFor="fuelTypeId">Fuel Type *</Label>
                   <Select
-                    value={formData.fuelType}
-                    onValueChange={(val) => setFormData({ ...formData, fuelType: val })}
+                    value={formData.fuelTypeId}
+                    onValueChange={(val) => setFormData({ ...formData, fuelTypeId: val })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select fuel type" />
+                      <SelectValue placeholder="Select fuel" />
                     </SelectTrigger>
                     <SelectContent>
-                      {FUEL_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
+                      {fuelTypes.map((type) => (
+                        <SelectItem key={type.fuelTypeId} value={type.fuelTypeId}>
+                          {type.fuelTypeName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -397,18 +447,18 @@ export function BusManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="transmissionType">Transmission *</Label>
+                  <Label htmlFor="transmissionTypeId">Transmission *</Label>
                   <Select
-                    value={formData.transmissionType}
-                    onValueChange={(val) => setFormData({ ...formData, transmissionType: val })}
+                    value={formData.transmissionTypeId}
+                    onValueChange={(val) => setFormData({ ...formData, transmissionTypeId: val })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select transmission" />
                     </SelectTrigger>
                     <SelectContent>
-                      {TRANSMISSION_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
+                      {transmissionTypes.map((type) => (
+                        <SelectItem key={type.transmissionTypeId} value={type.transmissionTypeId}>
+                          {type.typeName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -416,75 +466,81 @@ export function BusManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="chassisNumber">Chassis Number</Label>
+                  <Label htmlFor="luggageCapacityKg">Luggage (kg)</Label>
                   <Input
-                    id="chassisNumber"
-                    value={formData.chassisNumber}
-                    onChange={(e) => setFormData({ ...formData, chassisNumber: e.target.value })}
-                    placeholder="Optional"
+                    id="luggageCapacityKg"
+                    type="number"
+                    value={formData.luggageCapacityKg}
+                    onChange={(e) => setFormData({ ...formData, luggageCapacityKg: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="mileage">Mileage (km)</Label>
+                  <Label htmlFor="tankCapacityLiters">Tank (L)</Label>
                   <Input
-                    id="mileage"
+                    id="tankCapacityLiters"
                     type="number"
-                    value={formData.mileage}
-                    onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
-                    placeholder="0"
+                    value={formData.tankCapacityLiters}
+                    onChange={(e) => setFormData({ ...formData, tankCapacityLiters: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mileageKm">Mileage (km)</Label>
+                  <Input
+                    id="mileageKm"
+                    type="number"
+                    value={formData.mileageKm}
+                    onChange={(e) => setFormData({ ...formData, mileageKm: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 border-t pt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="luggage">Luggage Capacity (kg)</Label>
-                  <Input
-                    id="luggage"
-                    type="number"
-                    value={formData.luggage}
-                    onChange={(e) => setFormData({ ...formData, luggage: e.target.value })}
-                    placeholder="Optional"
-                  />
+                  <Label>Amenities</Label>
+                  <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto pr-2">
+                    {availableAmenities.map((amenity) => (
+                      <div key={amenity.amenityId} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`amenity-${amenity.amenityId}`}
+                          checked={formData.amenities.includes(amenity.amenityId)}
+                          onCheckedChange={() => toggleAmenity(amenity.amenityId)}
+                        />
+                        <label
+                          htmlFor={`amenity-${amenity.amenityId}`}
+                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {amenity.amenityName}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fuelTank">Fuel Tank (liters)</Label>
-                  <Input
-                    id="fuelTank"
-                    type="number"
-                    value={formData.fuelTank}
-                    onChange={(e) => setFormData({ ...formData, fuelTank: e.target.value })}
-                    placeholder="Optional"
-                  />
+                  <Label>Can Transport</Label>
+                  <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto pr-2">
+                    {availableTransportables.map((item) => (
+                      <div key={item.transportId} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`transport-${item.transportId}`}
+                          checked={formData.canTransport.includes(item.transportId)}
+                          onCheckedChange={() => toggleTransport(item.transportId)}
+                        />
+                        <label
+                          htmlFor={`transport-${item.transportId}`}
+                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {item.itemName}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Amenities</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {AMENITIES.map((amenity) => (
-                    <div key={amenity} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={amenity}
-                        checked={formData.amenities.includes(amenity)}
-                        onCheckedChange={() => toggleAmenity(amenity)}
-                      />
-                      <label
-                        htmlFor={amenity}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {amenity.replace(/_/g, " ")}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-
-              <div className="space-y-2">
-                <Label>Images</Label>
+              <div className="space-y-2 border-t pt-4">
+                <Label>Bus Images</Label>
                 <div>
                   <Button
                     type="button"
@@ -492,10 +548,8 @@ export function BusManagement() {
                     className="flex items-center gap-2"
                     onClick={() => document.getElementById('busImages')?.click()}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h2l.4-1.2A2 2 0 017.2 4h9.6a2 2 0 011.8 1.8L19 7h2a2 2 0 012 2v9a2 2 0 01-2 2H3a2 2 0 01-2-2V9a2 2 0 012-2zm9 5a3 3 0 100-6 3 3 0 000 6z" />
-                    </svg>
-                    <span>Add Image</span>
+                    <Plus className="w-4 h-4" />
+                    <span>Upload Images</span>
                   </Button>
                   <input
                     id="busImages"
@@ -510,14 +564,34 @@ export function BusManagement() {
                 {imagePreviews.length > 0 && (
                   <div className="flex gap-2 mt-2">
                     {imagePreviews.map((src, idx) => (
-                      <img key={idx} src={src} alt={`preview-${idx}`} className="w-20 h-14 object-cover rounded" />
+                      <img key={idx} src={src} alt={`preview-${idx}`} className="w-20 h-14 object-cover rounded border" />
                     ))}
                   </div>
                 )}
               </div>
 
+              {editingId && currentReviews.length > 0 && (
+                <div className="space-y-2 border-t pt-4">
+                  <Label>Recent Reviews</Label>
+                  <div className="space-y-3">
+                    {currentReviews.map((rev) => (
+                      <div key={rev.reviewId} className="bg-muted/50 p-3 rounded-lg text-xs">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-bold">{rev.customerName}</span>
+                          <span className="text-primary">★ {rev.rating}/5</span>
+                        </div>
+                        <p className="text-muted-foreground italic">"{rev.comment}"</p>
+                        <p className="text-[10px] mt-1 text-right text-muted-foreground">
+                          {new Date(rev.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <Button type="submit" className="w-full">
-                {editingId ? "Update Bus" : "Add Bus"}
+                {editingId ? "Update Bus Profile" : "Register Bus"}
               </Button>
             </form>
           </DialogContent>
@@ -526,8 +600,8 @@ export function BusManagement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Fleet Overview</CardTitle>
-          <CardDescription>{buses.length} buses in your system</CardDescription>
+          <CardTitle>Fleet Inventory</CardTitle>
+          <CardDescription>Comprehensive list of vehicles in service</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -540,55 +614,45 @@ export function BusManagement() {
                   <TableHead>Fuel</TableHead>
                   <TableHead>Transmission</TableHead>
                   <TableHead>Amenities</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {buses.map((bus) => (
-                  <TableRow key={bus.bus_id}>
-                    <TableCell className="font-medium">{bus.registration_number}</TableCell>
+                  <TableRow key={bus.busId}>
+                    <TableCell className="font-bold">{bus.registrationNumber}</TableCell>
                     <TableCell>
-                      {bus.bus_make.make_name} {bus.bus_model.model_name}
+                      {getMakeName(bus.busMakeId)} {getModelName(bus.busModelId)}
                     </TableCell>
-                    <TableCell>{bus.seat_count}</TableCell>
-                    <TableCell>{bus.fuel_type.fuel_type_name}</TableCell>
-                    <TableCell>{bus.transmission_type.type_name}</TableCell>
+                    <TableCell>{bus.totalSeats}</TableCell>
+                    <TableCell>{getFuelName(bus.fuelTypeId)}</TableCell>
+                    <TableCell>{getTransmissionName(bus.transmissionTypeId)}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
-                        {bus.amenities?.slice(0, 3).map((amenity) => (
-                          <span key={amenity} className="text-xs bg-muted px-2 py-1 rounded">
-                            {amenity}
+                        {bus.amenities?.slice(0, 2).map((a) => (
+                          <span key={a.amenityId} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                            {a.amenityName}
                           </span>
                         ))}
-                        {bus.amenities?.length > 3 && (
-                          <span className="text-xs text-muted-foreground">+{bus.amenities.length - 3}</span>
+                        {bus.amenities && bus.amenities.length > 2 && (
+                          <span className="text-[10px] text-muted-foreground">+{bus.amenities.length - 2}</span>
+                        )}
+                        {(!bus.amenities || bus.amenities.length === 0) && (
+                          <span className="text-[10px] text-muted-foreground italic">None</span>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {bus.in_service ? (
-                        <span className="flex items-center gap-1 text-green-600">
-                          <CheckCircle className="w-4 h-4" />
-                          Active
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-red-600">
-                          <XCircle className="w-4 h-4" />
-                          Inactive
-                        </span>
-                      )}
-                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpen(bus)} className="gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleOpen(bus)} title="Edit Details">
                           <Edit2 className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(bus.bus_id)}
-                          className="gap-1 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(bus.busId)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Remove from Fleet"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -596,6 +660,13 @@ export function BusManagement() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {buses.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No vehicles registered in the system.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

@@ -16,16 +16,15 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, MapPin } from "lucide-react"
-import { API_BASE_URL } from "@/lib/config"
+import {
+  getLocations,
+  createLocation,
+  updateLocation,
+  deleteLocation,
+  Location,
+} from "@/lib/api"
 
-interface Location {
-  location_id: string
-  city_name: string
-  region?: string
-  country?: string
-}
-
-export function LocationManagement() {
+export function LocationManagement({ agencyId }: { agencyId: string }) {
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,40 +37,15 @@ export function LocationManagement() {
   })
 
   // DUMMY DATA: Using mock location data for development/testing
-  const fetchLocations = () => {
+  const fetchLocations = async () => {
     try {
       setLoading(true)
-      const mockLocations: Location[] = [
-        {
-          location_id: "1",
-          city_name: "Nairobi",
-          region: "Nairobi County",
-          country: "Kenya",
-        },
-        {
-          location_id: "2",
-          city_name: "Mombasa",
-          region: "Coastal County",
-          country: "Kenya",
-        },
-        {
-          location_id: "3",
-          city_name: "Kisumu",
-          region: "Nyanza Region",
-          country: "Kenya",
-        },
-        {
-          location_id: "4",
-          city_name: "Nakuru",
-          region: "Rift Valley",
-          country: "Kenya",
-        },
-      ]
-      setLocations(mockLocations)
+      const data = await getLocations()
+      setLocations(data)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error loading dummy data:", err)
+      console.error("[LocationManagement] Error loading data:", err)
     } finally {
       setLoading(false)
     }
@@ -89,11 +63,11 @@ export function LocationManagement() {
   const handleOpen = (location?: Location) => {
     if (location) {
       setFormData({
-        cityName: location.city_name,
-        region: location.region || "",
-        country: location.country || "",
+        cityName: location.locationname,
+        region: "", // Not in current DTO
+        country: "", // Not in current DTO
       })
-      setEditingId(location.location_id)
+      setEditingId(location.locationid)
     } else {
       resetForm()
     }
@@ -104,33 +78,22 @@ export function LocationManagement() {
     e.preventDefault()
 
     try {
-      const payload = {
-        city_name: formData.cityName,
-        region: formData.region || null,
-        country: formData.country || null,
+      const payload: Partial<Location> = {
+        locationname: formData.cityName,
+        agencyid: agencyId,
       }
 
       if (editingId) {
-        const response = await fetch(`${API_BASE_URL}/locations/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to update location")
+        await updateLocation(editingId, payload)
       } else {
-        const response = await fetch(`${API_BASE_URL}/locations`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to create location")
+        await createLocation(payload)
       }
 
       await fetchLocations()
       setOpen(false)
       resetForm()
     } catch (err) {
-      console.error("[v0] Error saving location:", err)
+      console.error("[LocationManagement] Error saving location:", err)
       alert("Failed to save location. Please try again.")
     }
   }
@@ -139,13 +102,10 @@ export function LocationManagement() {
     if (!confirm("Are you sure you want to delete this location?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/locations/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("Failed to delete location")
+      await deleteLocation(id)
       await fetchLocations()
     } catch (err) {
-      console.error("[v0] Error deleting location:", err)
+      console.error("[LocationManagement] Error deleting location:", err)
       alert("Failed to delete location. Please try again.")
     }
   }
@@ -256,10 +216,10 @@ export function LocationManagement() {
               </TableHeader>
               <TableBody>
                 {locations.map((location) => (
-                  <TableRow key={location.location_id}>
-                    <TableCell className="font-medium">{location.city_name}</TableCell>
-                    <TableCell>{location.region || "—"}</TableCell>
-                    <TableCell>{location.country || "—"}</TableCell>
+                  <TableRow key={location.locationid}>
+                    <TableCell className="font-medium">{location.locationname}</TableCell>
+                    <TableCell>—</TableCell>
+                    <TableCell>—</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => handleOpen(location)} className="gap-1">
@@ -268,7 +228,7 @@ export function LocationManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(location.location_id)}
+                          onClick={() => handleDelete(location.locationid)}
                           className="gap-1 text-destructive hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />

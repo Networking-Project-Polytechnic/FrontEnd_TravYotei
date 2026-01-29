@@ -1,34 +1,22 @@
 "use client"
 
-import { useState } from "react"
-import { Sidebar } from "@/components/sidebar"
-import { BusManagement } from "@/components/sections/bus-management"
-import { DriverManagement } from "@/components/sections/driver-management"
-import { RouteManagement } from "@/components/sections/route-management"
-import { FareManagement } from "@/components/sections/fare-management"
-import { TripManagement } from "@/components/sections/trip-management"
-import { DriverAssignment } from "@/components/sections/driver-assignment"
-import { LocationManagement } from "@/components/sections/location-management"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 
-type Section = "buses" | "drivers" | "locations" | "routes" | "fares" | "trips" | "assignments"
+export default function DashboardRedirect() {
+  const router = useRouter()
+  const defaultAgencyId = "test-agency-id"
 
-export default function DashboardPage() {
-  const [activeSection, setActiveSection] = useState<Section>("buses")
+  useEffect(() => {
+    router.push(`/Dashboard/${defaultAgencyId}`)
+  }, [router])
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">
-          {activeSection === "buses" && <BusManagement />}
-          {activeSection === "drivers" && <DriverManagement />}
-          {activeSection === "locations" && <LocationManagement />}
-          {activeSection === "routes" && <RouteManagement />}
-          {activeSection === "fares" && <FareManagement />}
-          {activeSection === "trips" && <TripManagement />}
-          {activeSection === "assignments" && <DriverAssignment />}
-        </div>
-      </main>
+    <div className="flex items-center justify-center h-screen bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-muted-foreground animate-pulse">Redirecting to agency dashboard...</p>
+      </div>
     </div>
   )
 }

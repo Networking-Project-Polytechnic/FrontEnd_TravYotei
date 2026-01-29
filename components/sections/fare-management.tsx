@@ -18,114 +18,77 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit2, Trash2, DollarSign } from "lucide-react"
-import { API_BASE_URL } from "@/lib/config"
+import {
+  getRoutePrices as getFares,
+  getRoutePricesByAgency,
+  createRoutePrice as createFare,
+  updateRoutePrice as updateFare,
+  deleteRoutePrice as deleteFare,
+  getRoutes,
+  getRoutesByAgency,
+  getBuses,
+  getBusesByAgency,
+  RoutePrice as Fare,
+  Route,
+  Bus,
+  getLocations,
+  getBusTypes,
+  Location,
+  BusType,
+} from "@/lib/api"
 
-interface Fare {
-  fare_id: string
-  route_id: string
-  bus_class: "STANDARD" | "VIP"
-  price: number
-  currency: string
-  valid_from: string
-  valid_to: string | null
-  route?: {
-    origin_city: string
-    destination_city: string
-  }
-}
-
-interface Route {
-  route_id: string
-  origin_city: string
-  destination_city: string
-}
-
-export function FareManagement() {
+export function FareManagement({ agencyId }: { agencyId: string }) {
+  console.log("FareManagement initialized with agencyId:", agencyId);
   const [fares, setFares] = useState<Fare[]>([])
   const [routes, setRoutes] = useState<Route[]>([])
+  const [buses, setBuses] = useState<Bus[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
+  const [busTypes, setBusTypes] = useState<BusType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     routeId: "",
-    busClass: "STANDARD" as "STANDARD" | "VIP",
-    price: "",
+    busId: "", // Changed from busClass to busId
+    priceAmount: "", // Changed from price to priceAmount
     currency: "XAF",
-    validFrom: new Date().toISOString().split("T")[0],
-    validTo: "",
   })
 
-  // DUMMY DATA: Using mock data for development/testing
-  const fetchFares = () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true)
-      const mockRoutes: Route[] = [
-        { route_id: "1", origin_city: "Nairobi", destination_city: "Mombasa" },
-        { route_id: "2", origin_city: "Nairobi", destination_city: "Kisumu" },
-      ]
-
-      const mockFares: Fare[] = [
-        {
-          fare_id: "1",
-          route_id: "1",
-          bus_class: "STANDARD",
-          price: 1500,
-          currency: "KES",
-          valid_from: "2024-01-01",
-          valid_to: null,
-          route: mockRoutes[0],
-        },
-        {
-          fare_id: "2",
-          route_id: "1",
-          bus_class: "VIP",
-          price: 2500,
-          currency: "KES",
-          valid_from: "2024-01-01",
-          valid_to: null,
-          route: mockRoutes[0],
-        },
-        {
-          fare_id: "3",
-          route_id: "2",
-          bus_class: "STANDARD",
-          price: 1200,
-          currency: "KES",
-          valid_from: "2024-01-01",
-          valid_to: null,
-          route: mockRoutes[1],
-        },
-      ]
-
-      setFares(mockFares)
-      setRoutes(mockRoutes)
+      const [faresData, routesData, busesData, locationsData, busTypesData] = await Promise.all([
+        getRoutePricesByAgency(agencyId),
+        getRoutesByAgency(agencyId),
+        getBusesByAgency(agencyId),
+        getLocations(),
+        getBusTypes(),
+      ])
+      setFares(faresData)
+      setRoutes(routesData)
+      setBuses(busesData)
+      setLocations(locationsData)
+      setBusTypes(busTypesData)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error loading dummy data:", err)
+      console.error("[FareManagement] Error loading data:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchRoutes = () => {
-    // Routes are already loaded in fetchFares
-  }
-
   useEffect(() => {
-    fetchFares()
-    fetchRoutes()
+    fetchAllData()
   }, [])
 
   const resetForm = () => {
     setFormData({
       routeId: "",
-      busClass: "STANDARD",
-      price: "",
+      busId: "",
+      priceAmount: "",
       currency: "XAF",
-      validFrom: new Date().toISOString().split("T")[0],
-      validTo: "",
     })
     setEditingId(null)
   }
@@ -133,14 +96,12 @@ export function FareManagement() {
   const handleOpen = (fare?: Fare) => {
     if (fare) {
       setFormData({
-        routeId: fare.route_id,
-        busClass: fare.bus_class,
-        price: fare.price.toString(),
+        routeId: fare.routeId,
+        busId: fare.busId,
+        priceAmount: fare.priceAmount.toString(),
         currency: fare.currency,
-        validFrom: fare.valid_from,
-        validTo: fare.valid_to || "",
       })
-      setEditingId(fare.fare_id)
+      setEditingId(fare.priceId)
     } else {
       resetForm()
     }
@@ -151,36 +112,26 @@ export function FareManagement() {
     e.preventDefault()
 
     try {
-      const payload = {
-        route_id: formData.routeId,
-        bus_class: formData.busClass,
-        price: Number.parseFloat(formData.price),
+      const payload: Partial<Fare> = {
+        routeId: formData.routeId,
+        busId: formData.busId,
+        priceAmount: Number.parseFloat(formData.priceAmount),
         currency: formData.currency,
-        valid_from: formData.validFrom,
-        valid_to: formData.validTo || null,
+        agencyid: agencyId,
       }
+      console.log("PAYLOAD V2 - Sending:", JSON.stringify(payload));
 
       if (editingId) {
-        const response = await fetch(`${API_BASE_URL}/fares/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to update fare")
+        await updateFare(editingId, payload)
       } else {
-        const response = await fetch(`${API_BASE_URL}/fares`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) throw new Error("Failed to create fare")
+        await createFare(payload)
       }
 
-      await fetchFares()
+      await fetchAllData()
       setOpen(false)
       resetForm()
     } catch (err) {
-      console.error("[v0] Error saving fare:", err)
+      console.error("[FareManagement] Error saving fare:", err)
       alert("Failed to save fare. Please try again.")
     }
   }
@@ -189,28 +140,12 @@ export function FareManagement() {
     if (!confirm("Are you sure you want to delete this fare?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/fares/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("Failed to delete fare")
-      await fetchFares()
+      await deleteFare(id)
+      await fetchAllData()
     } catch (err) {
-      console.error("[v0] Error deleting fare:", err)
+      console.error("[FareManagement] Error deleting fare:", err)
       alert("Failed to delete fare. Please try again.")
     }
-  }
-
-  const getRouteDisplay = (routeId: string) => {
-    const route = routes.find((r) => r.route_id === routeId)
-    return route ? `${route.origin_city} → ${route.destination_city}` : routeId
-  }
-
-  const isValidFare = (fare: Fare) => {
-    const today = new Date().toISOString().split("T")[0]
-    if (fare.valid_to) {
-      return fare.valid_from <= today && today <= fare.valid_to
-    }
-    return fare.valid_from <= today
   }
 
   if (loading) {
@@ -225,13 +160,18 @@ export function FareManagement() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <p className="text-destructive">Error: {error}</p>
-        <Button onClick={fetchFares}>Retry</Button>
+        <Button onClick={fetchAllData}>Retry</Button>
       </div>
     )
   }
 
-  const totalRevenue = fares.reduce((sum, fare) => sum + fare.price, 0)
-  const activeFares = fares.filter(isValidFare).length
+  const totalRevenue = fares.reduce((sum, fare) => sum + fare.priceAmount, 0)
+  /* Removed VIP calculation as bus type is removed */
+  const vipBusType = buses.find(b => b.busTypeId === "VIP_UUID_PLACEHOLDER"); // Adjust if there's a specific ID for VIP
+  const vipFaresCount = fares.filter(fare => fare.busId === vipBusType?.busId).length;
+  const standardFaresCount = fares.filter(fare => fare.busId !== vipBusType?.busId).length;
+
+
 
   return (
     <div className="space-y-6">
@@ -266,37 +206,48 @@ export function FareManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     {routes.map((route) => (
-                      <SelectItem key={route.route_id} value={route.route_id}>
-                        {route.origin_city} → {route.destination_city}
+                      <SelectItem key={route.routeid} value={route.routeid}>
+                        {(() => {
+                          const origin = locations.find(l => l.locationid === route.startlocationid)?.locationname || route.startlocationid;
+                          const dest = locations.find(l => l.locationid === route.endlocationid)?.locationname || route.endlocationid;
+                          return `${origin} → ${dest}`;
+                        })()}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="busClass">Bus Class *</Label>
+                <Label htmlFor="busId">Bus *</Label>
                 <Select
-                  value={formData.busClass}
-                  onValueChange={(value: "STANDARD" | "VIP") => setFormData({ ...formData, busClass: value })}
+                  value={formData.busId}
+                  onValueChange={(value: string) => setFormData({ ...formData, busId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select a bus" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="STANDARD">Standard</SelectItem>
-                    <SelectItem value="VIP">VIP</SelectItem>
+                    {buses.map((bus) => {
+                      const busType = busTypes.find(t => t.busTypeId === bus.busTypeId);
+                      return (
+                        <SelectItem key={bus.busId} value={bus.busId}>
+                          {bus.registrationNumber} ({busType?.busTypeName || bus.busTypeId})
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price *</Label>
+                  <Label htmlFor="priceAmount">Price *</Label>
                   <Input
-                    id="price"
+                    id="priceAmount"
                     type="number"
                     step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    value={formData.priceAmount}
+                    onChange={(e) => setFormData({ ...formData, priceAmount: e.target.value })}
                     placeholder="e.g., 5000"
                     required
                   />
@@ -308,27 +259,6 @@ export function FareManagement() {
                     value={formData.currency}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                     placeholder="XAF"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="validFrom">Valid From *</Label>
-                  <Input
-                    id="validFrom"
-                    type="date"
-                    value={formData.validFrom}
-                    onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="validTo">Valid To</Label>
-                  <Input
-                    id="validTo"
-                    type="date"
-                    value={formData.validTo}
-                    onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
                   />
                 </div>
               </div>
@@ -348,7 +278,7 @@ export function FareManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{fares.length}</div>
-            <p className="text-xs text-muted-foreground">{activeFares} currently active</p>
+            <p className="text-xs text-muted-foreground">Configured fares</p>
           </CardContent>
         </Card>
         <Card>
@@ -358,7 +288,7 @@ export function FareManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {fares.length > 0 ? `${(totalRevenue / fares.length).toFixed(0)} XAF` : "—"}
+              {fares.length > 0 ? `${(totalRevenue / fares.length).toFixed(0)} ${fares[0]?.currency || "XAF"}` : "—"}
             </div>
             <p className="text-xs text-muted-foreground">Across all routes</p>
           </CardContent>
@@ -369,9 +299,9 @@ export function FareManagement() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{fares.filter((f) => f.bus_class === "VIP").length}</div>
+            <div className="text-2xl font-bold">{vipFaresCount}</div>
             <p className="text-xs text-muted-foreground">
-              {fares.filter((f) => f.bus_class === "STANDARD").length} standard
+              {standardFaresCount} standard
             </p>
           </CardContent>
         </Card>
@@ -388,30 +318,40 @@ export function FareManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Route</TableHead>
-                  <TableHead>Class</TableHead>
+                  <TableHead>Bus</TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Valid From</TableHead>
-                  <TableHead>Valid To</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {fares.map((fare) => (
-                  <TableRow key={fare.fare_id}>
-                    <TableCell className="font-medium">{getRouteDisplay(fare.route_id)}</TableCell>
+                  <TableRow key={fare.priceId}>
+                    <TableCell className="font-medium">
+                      {(() => {
+                        const route = routes.find(r => r.routeid === fare.routeId);
+                        if (!route) return "Unknown Route";
+                        const origin = locations.find(l => l.locationid === route.startlocationid)?.locationname || route.startlocationid;
+                        const dest = locations.find(l => l.locationid === route.endlocationid)?.locationname || route.endlocationid;
+                        return `${origin} → ${dest}`;
+                      })()}
+                    </TableCell>
+
                     <TableCell>
-                      <Badge variant={fare.bus_class === "VIP" ? "default" : "secondary"}>{fare.bus_class}</Badge>
+                      {(() => {
+                        const bus = buses.find(b => b.busId === fare.busId);
+                        const typeName = busTypes.find(bt => bt.busTypeId === bus?.busTypeId)?.busTypeName;
+                        return (
+                          <div className="flex flex-col">
+                            <span className="font-medium">{bus?.registrationNumber || "Unknown Bus"}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {typeName || bus?.busTypeId || "Unknown Type"}
+                            </span>
+                          </div>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell>
-                      {fare.price.toFixed(2)} {fare.currency}
-                    </TableCell>
-                    <TableCell>{fare.valid_from}</TableCell>
-                    <TableCell>{fare.valid_to || "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={isValidFare(fare) ? "default" : "outline"}>
-                        {isValidFare(fare) ? "Active" : "Inactive"}
-                      </Badge>
+                      {fare.currency} {fare.priceAmount.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -421,7 +361,7 @@ export function FareManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(fare.fare_id)}
+                          onClick={() => handleDelete(fare.priceId)}
                           className="gap-1 text-destructive hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -435,6 +375,6 @@ export function FareManagement() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div >
   )
 }
