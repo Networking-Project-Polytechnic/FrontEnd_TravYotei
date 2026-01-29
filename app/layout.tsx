@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import PageTransition from "@/components/PageTransition";
 // import { AuthProvider } from "@/context/AuthContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
 
 // Pages where navbar should be hidden
@@ -39,6 +40,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
+          <Toaster />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
