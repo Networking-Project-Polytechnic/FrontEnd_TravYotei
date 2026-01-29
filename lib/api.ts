@@ -541,8 +541,6 @@ export const signup_client = async (userData: {
 };
 
 // Agency regiser
-// auth/agency/register
-// firstName, lastName, userName, email, password, phoneNumber, address, licenseNumber
 export const signup_agency = async (userData: {
   firstName: string;
   lastName: string;
@@ -561,7 +559,7 @@ export const signup_agency = async (userData: {
   }
 }
 
-// User signup
+// Client signup
 export const signup = async (userData: {
   firstName: string;
   lastName: string;
@@ -579,6 +577,23 @@ export const signup = async (userData: {
   }
 };
 
+// Profile picture update
+export const updateProfileImage = async (newImageUrl: string) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api_auth.put('/user/profile/image-url',
+      { newImageUrl },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 //Api to get all agencies
 // uncomment when we want to switch to real API
 // const API_URL = 'http://localhost:8181/api/v1/agencies';
