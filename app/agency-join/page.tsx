@@ -11,30 +11,27 @@ export default function Home() {
     <div className="min-h-screen bg-white font-poppins overflow-hidden">
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
         {/* Form container - NOW WITH RELATIVE POSITIONING */}
-        <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[600px]">
-          
+        <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[200px]">
+
           {/* Background circle - NOW ABSOLUTE AND INSIDE FORM */}
-          <div className={`absolute w-[1100px] h-[1100px] rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 transition-all duration-700 ease-in-out z-0 ${
-            isSignUpMode 
-              ? 'top-0 left-0 -translate-x-1/2 -translate-y-1/2'  // Top-left for Signup
-              : 'top-0 right-0 translate-x-1/2 -translate-y-1/2'   // Top-right for Signin
-          }`}></div>
+          <div className={`absolute w-[1100px] h-[1100px] rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 transition-all duration-700 ease-in-out z-0 ${isSignUpMode
+            ? 'top-0 left-0 -translate-x-1/2 -translate-y-1/2'  // Top-left for Signup
+            : 'top-0 right-0 translate-x-1/2 -translate-y-1/2'   // Top-right for Signin
+            }`}></div>
 
           <div className="flex flex-col md:flex-row h-full relative z-10">
             {/* Forms Container */}
             <div className="w-full md:w-1/2 p-8 md:p-16 transition-all duration-700 ease-in-out z-20">
-              <div className="relative w-full h-full">
+              <div className="w-full h-full grid place-items-center relative">
                 {/* Sign In Form */}
-                <div className={`m-10 absolute top-0 left-0 w-full transition-all duration-700 ease-in-out ${
-                  isSignUpMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                }`}>
+                <div className={`w-full col-start-1 row-start-1 transition-all duration-700 ease-in-out ${isSignUpMode ? 'opacity-0 pointer-events-none translate-x-[20px]' : 'opacity-100 translate-x-0'
+                  }`}>
                   <LoginForm switchToSignup={() => setIsSignUpMode(true)} />
                 </div>
 
                 {/* Sign Up Form */}
-                <div className={`mb-10 mt-0 absolute top-0 left-0 w-full transition-all duration-700 ease-in-out ${
-                  isSignUpMode ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                }`}>
+                <div className={`w-full col-start-1 row-start-1 transition-all duration-700 ease-in-out ${isSignUpMode ? 'opacity-100 translate-x-0' : 'opacity-0 pointer-events-none -translate-x-[20px]'
+                  }`}>
                   <SignupForm switchToLogin={() => setIsSignUpMode(false)} />
                 </div>
               </div>
@@ -43,9 +40,8 @@ export default function Home() {
             {/* Panels Container */}
             <div className={`w-full md:w-1/2 relative ${isSignUpMode ? 'md:order-first' : 'md:order-last'}`}>
               {/* Left Panel */}
-              <div className={`absolute top-0 left-0 w-full h-full p-8 md:p-16 flex flex-col justify-between transition-all duration-700 ease-in-out ${
-                isSignUpMode ? 'md:-translate-x-full opacity-0' : 'opacity-100'
-              }`}>
+              <div className={`absolute top-0 left-0 w-full h-full p-8 md:p-16 flex flex-col justify-between transition-all duration-700 ease-in-out ${isSignUpMode ? 'md:-translate-x-full opacity-0' : 'opacity-100'
+                }`}>
                 <div className="text-center md:text-right text-white">
                   <h3 className="text-2xl md:text-3xl font-semibold mb-4">
                     New to <span className="text-travyotei">TravYotei</span> ?
@@ -61,18 +57,17 @@ export default function Home() {
                   </button>
                 </div>
                 <div className="mt-0 md:-mt-8">
-                  <img 
-                    src="location.svg" 
-                    alt="Location" 
+                  <img
+                    src="location.svg"
+                    alt="Location"
                     className="w-60 max-w-md mx-auto md:mr-auto z-20"
                   />
                 </div>
               </div>
 
               {/* Right Panel */}
-              <div className={`absolute inset-0 p-8 md:p-16 flex flex-col justify-between items-start transition-all duration-700 ease-in-out ${
-                isSignUpMode ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}>
+              <div className={`absolute inset-0 p-8 md:p-16 flex flex-col justify-between items-start transition-all duration-700 ease-in-out ${isSignUpMode ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}>
                 <div className="text-left text-white max-w-[320px]">
                   <h3 className="text-2xl md:text-3xl font-semibold mb-4">One of us ?</h3>
                   <p className="mb-8">Your next adventure begins with the right crew</p>
@@ -85,9 +80,9 @@ export default function Home() {
                 </div>
 
                 <div className="mt-8 md:mt-0 w-full flex justify-start">
-                  <img 
-                    src="vehicle.png" 
-                    alt="Vehicle" 
+                  <img
+                    src="vehicle.png"
+                    alt="Vehicle"
                     className="w-72 md:w-64 lg:w-72"
                   />
                 </div>

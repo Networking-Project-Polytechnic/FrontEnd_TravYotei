@@ -42,19 +42,22 @@
 }
 
 .dark {
-  --background: oklch(0.12 0.03 234); /* Deep Ocean Black-Blue */
+  --background: oklch(0.12 0.03 234);
+  /* Deep Ocean Black-Blue */
   --foreground: oklch(0.92 0.02 214);
   --card: oklch(0.16 0.03 234);
   --card-foreground: oklch(0.92 0.02 214);
   --popover: oklch(0.12 0.03 234);
   --popover-foreground: oklch(0.92 0.02 214);
-  --primary: oklch(0.7 0.18 214); /* Neon Cyan */
+  --primary: oklch(0.7 0.18 214);
+  /* Neon Cyan */
   --primary-foreground: oklch(0.1 0.03 234);
   --secondary: oklch(0.25 0.05 234);
   --secondary-foreground: oklch(0.92 0.02 214);
   --muted: oklch(0.2 0.04 234);
   --muted-foreground: oklch(0.6 0.05 214);
-  --accent: oklch(0.75 0.2 190); /* Electric Neon Blue */
+  --accent: oklch(0.75 0.2 190);
+  /* Electric Neon Blue */
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.6 0.25 20);
   --destructive-foreground: oklch(1 0 0);
@@ -116,7 +119,19 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Override browser default autofill background */
+/* Override browser default autofill background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #f9fafb inset !important;
+  -webkit-text-fill-color: black !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
