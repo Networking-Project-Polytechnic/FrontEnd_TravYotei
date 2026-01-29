@@ -507,6 +507,7 @@ export async function getAgencyById(id: string): Promise<Agency | null> {
   return mockAgencies[0];
 }
 
+// Axios instance for authentication API
 const api_auth = axios.create({
   baseURL: 'http://localhost:8181/api/v1',
   headers: {
@@ -525,12 +526,50 @@ export const login = async (name: string, password: string) => {
     throw error;
   }
 };
-
-// Admin signup
-export const signup_admin = async (userData: {
+// Client signup
+export const signup_client = async (userData: {
   name: string;
   email: string;
   password: string;
+}) => {
+  try {
+    const response = await api_auth.post('/auth/client/register', userData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Agency regiser
+// auth/agency/register
+// firstName, lastName, userName, email, password, phoneNumber, address, licenseNumber
+export const signup_agency = async (userData: {
+  firstName: string;
+  lastName: string;
+  userName: string;
+  email: string;
+  password: string;
+  phoneNumber: number;
+  address: string;
+  licenseNumber: string;
+}) => {
+  try {
+    const response = await api_auth.post('/auth/agency/register', userData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// User signup
+export const signup = async (userData: {
+  firstName: string;
+  lastName: string;
+  userName: string;
+  email: string;
+  password: string;
+  phoneNumber: number;
+  address: string;
 }) => {
   try {
     const response = await api_auth.post('/auth/admin/register', userData);

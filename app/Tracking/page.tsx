@@ -51,7 +51,7 @@ const TrackingPage = () => {
 
                         {/* Subtle Description */}
                         <p className="text-gray-500 text-sm leading-relaxed">
-                            Real-time tracking, delivery notifications, and shipment analytics 
+                            Real-time tracking, delivery notifications, and analytics 
                             are coming your way. Stay tuned for updates!
                         </p>
                     </div>

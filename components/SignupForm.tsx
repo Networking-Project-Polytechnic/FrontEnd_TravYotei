@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaFacebookF, FaGoogle, FaLinkedinIn, FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
 import { signup } from '@/lib/api';
+import { FaXTwitter } from 'react-icons/fa6';
 
 interface SignupFormProps {
   switchToLogin: () => void;
@@ -15,7 +16,7 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     userName: '',
     email: '',
     password: '',
-    phoneNumber: '',
+    phoneNumber: '', // Keep as string in state for form input
     address: '',
   });
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,22 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     });
   };
 
+  // Helper function to convert phone string to number
+  const convertPhoneToNumber = (phoneString: string): number => {
+    // Remove all non-digit characters
+    const digitsOnly = phoneString.replace(/\D/g, '');
+
+    // Parse to number
+    const phoneNumber = parseInt(digitsOnly, 10);
+
+    // Check if it's a valid number
+    if (isNaN(phoneNumber)) {
+      throw new Error('Invalid phone number format');
+    }
+
+    return phoneNumber;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -36,16 +53,24 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     setLoading(true);
 
     try {
-      // basic client-side validation
-      if (!formData.phoneNumber) {
+      // Basic client-side validation
+      if (!formData.phoneNumber.trim()) {
         setError('Please provide a phone number.');
+        setLoading(false);
         return;
       }
 
-      const response = await signup(formData);
+      // Prepare data for API - convert phoneNumber from string to number
+      const apiData = {
+        ...formData,
+        phoneNumber: convertPhoneToNumber(formData.phoneNumber),
+      };
+
+      const response = await signup(apiData);
       setSuccess('Registration successful! You can now login.');
       console.log('Signup successful:', response);
-      // Clear form or redirect
+
+      // Clear form
       setFormData({
         firstName: '',
         lastName: '',
@@ -56,22 +81,46 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         address: '',
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      // Handle specific phone number conversion error
+      if (err.message === 'Invalid phone number format') {
+        setError('Please enter a valid phone number (digits only).');
+      } else if (err.response?.data?.message) {
+        // Backend error
+        setError(err.response.data.message);
+      } else if (err.message) {
+        // Other errors
+        setError(err.message || 'Registration failed. Please try again.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+      console.error('Signup error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Optional: Format phone input as user types
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only digits for simplicity
+    const digitsOnly = value.replace(/\D/g, '');
+
+    setFormData({
+      ...formData,
+      phoneNumber: digitsOnly,
+    });
+  };
+
   return (
     <form onSubmit={handleSubmit} className="w-full mb-7 max-w-md mx-auto">
       <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6 text-center">Sign Up</h2>
-      
+
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
           {error}
         </div>
       )}
-      
+
       {success && (
         <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">
           {success}
@@ -161,6 +210,7 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
             onChange={handleChange}
             className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
+            minLength={6}
           />
         </div>
       </div>
@@ -173,11 +223,13 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
           <input
             type="tel"
             name="phoneNumber"
-            placeholder="Phone Number"
+            placeholder="Phone Number (e.g., 681154869)"
             value={formData.phoneNumber}
-            onChange={handleChange}
+            onChange={handlePhoneChange}
             className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
+            pattern="\d{10,}"
+            title="Please enter at least 10 digits"
           />
         </div>
       </div>
@@ -208,22 +260,23 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
           {loading ? 'Registering...' : 'Sign Up'}
         </button>
       </div>
+        {/* Social Signup */}
+        <p className="text-gray-600 text-center text-sm mt-4 mb-3">Or Sign Up with social platforms</p>
 
-      <p className="text-gray-600 text-center mt-6 mb-4">Or Sign Up with social platforms</p>
-      
-      <div className="flex justify-center space-x-4">
-        <a href="#" className="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-          <FaUser />
-        </a>
-        <a href="#" className="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-          <FaUser />
-        </a>
-        <a href="#" className="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-          <FaUser />
-        </a>
-        <a href="#" className="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-          <FaUser />
-        </a>
+        <div className="flex justify-center space-x-3 mb-2">
+          <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
+            <FaFacebookF className="text-xs" />
+          </a>
+          <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
+            <FaLinkedinIn className="text-xs" />
+          </a>
+          <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
+            <FaGoogle className="text-xs" />
+          </a>
+          <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
+            <FaXTwitter className="text-xs" />
+          </a>
+        
       </div>
     </form>
   );

@@ -16,7 +16,7 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     userName: '',
     email: '',
     password: '',
-    phoneNumber: '',
+    phoneNumber: '', // Keep as string in state for form input
     address: '',
     licenseNumber: '',
   });
@@ -31,6 +31,22 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     });
   };
 
+  // Helper function to convert phone string to number
+  const convertPhoneToNumber = (phoneString: string): number => {
+    // Remove all non-digit characters (spaces, dashes, parentheses, plus sign)
+    const digitsOnly = phoneString.replace(/\D/g, '');
+    
+    // Parse to number
+    const phoneNumber = parseInt(digitsOnly, 10);
+    
+    // Check if it's a valid number
+    if (isNaN(phoneNumber)) {
+      throw new Error('Invalid phone number format');
+    }
+    
+    return phoneNumber;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -38,22 +54,30 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     setLoading(true);
     
     try {
-      // basic client-side validation
-      if (!formData.phoneNumber) {
+      // Basic client-side validation
+      if (!formData.phoneNumber.trim()) {
         setError('Please provide a phone number.');
+        setLoading(false);
         return;
       }
 
-      if (!formData.licenseNumber) {
+      if (!formData.licenseNumber.trim()) {
         setError('Please enter your license number.');
         setLoading(false);
         return;
       }
 
-      const response = await signup_agency(formData);
+      // Prepare data for API - convert phoneNumber from string to number
+      const apiData = {
+        ...formData,
+        phoneNumber: convertPhoneToNumber(formData.phoneNumber),
+      };
+
+      const response = await signup_agency(apiData);
       setSuccess('Registration successful! You can now login.');
       console.log('Signup successful:', response);
-      // Clear form or redirect --
+      
+      // Clear form
       setFormData({
         firstName: '',
         lastName: '',
@@ -65,10 +89,43 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         licenseNumber: '',
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      // Handle specific phone number conversion error
+      if (err.message === 'Invalid phone number format') {
+        setError('Please enter a valid phone number (digits only).');
+      } else if (err.response?.data?.message) {
+        // Backend error
+        setError(err.response.data.message);
+      } else if (err.message) {
+        // Other errors
+        setError(err.message || 'Registration failed. Please try again.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+      console.error('Signup error:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add input formatting for phone number (optional)
+  const formatPhoneInput = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '');
+    
+    // Format as (XXX) XXX-XXXX for US numbers (adjust as needed)
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+    const formattedValue = formatPhoneInput(rawValue);
+    
+    setFormData({
+      ...formData,
+      phoneNumber: rawValue, // Store the raw digits for conversion
+    });
   };
 
   return (
@@ -174,6 +231,7 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
             onChange={handleChange}
             className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
+            minLength={6}
           />
         </div>
       </div>
@@ -187,11 +245,13 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
           <input
             type="tel"
             name="phoneNumber"
-            placeholder="Phone Number"
+            placeholder="Phone Number (e.g., 681154869)"
             value={formData.phoneNumber}
-            onChange={handleChange}
+            onChange={handlePhoneChange}
             className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
+            pattern="\d{10,}"
+            title="Please enter at least 10 digits"
           />
         </div>
       </div>

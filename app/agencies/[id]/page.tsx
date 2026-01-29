@@ -692,7 +692,7 @@ export default function AgencyDetailPage() {
                     ...initialOccupiedSeatsForTrip,
                     ...(bookedSeats[selectedTrip.id] || [])
                   ]}
-                  onSeatSelect={(seatId) => setTempSelectedSeat(seatId)}
+                  onSeatSelect={(seatId: any) => setTempSelectedSeat(seatId)}
                 />
               </div>
 
