@@ -159,6 +159,37 @@ interface Trip {
   duration: string;
 }
 
+// Feature translation mapping
+const FEATURE_TRANSLATIONS: Record<string, string> = {
+  'WiFi haute vitesse': 'High-speed WiFi',
+  'Climatisation': 'Air Conditioning',
+  'Service 24h/24': '24/7 Service',
+  'Bagages inclus': 'Baggage included',
+  'Chargement USB': 'USB Charging',
+  'Service VIP': 'VIP Service',
+  'Service sur place': 'On-site Service',
+  'Réservation en ligne': 'Online Reservation',
+  'Service touristique': 'Tourist Service',
+  'Grande capacité': 'High Capacity',
+  'Prix économique': 'Economy Price',
+  'Service national': 'National Service',
+  'Expérience': 'Experience',
+  'Service Mvan': 'Mvan Service',
+  'Innovation': 'Innovation',
+  'Service international': 'International Service',
+  'Service corporatif': 'Corporate Service',
+  'Eau minérale': 'Mineral Water',
+  'Sièges inclinables': 'Reclining Seats',
+  'Repas léger': 'Light Meal',
+  'Guide local': 'Local Guide',
+  'Confort moderne': 'Modern Comfort',
+  'Haute qualité': 'High Quality',
+  'Tradition': 'Tradition',
+  'Service client': 'Customer Service'
+};
+
+const translateFeature = (feature: string) => FEATURE_TRANSLATIONS[feature] || feature;
+
 // Fonction pour obtenir les assets d'une agence
 const getAgencyAssets = (agencyName: string) => {
   if (!agencyName) return { logo: null, busPhoto: null };
@@ -221,7 +252,7 @@ const generateSchedule = (agency: Agency): ScheduleDay[] => {
   const days: ScheduleDay[] = [];
 
   // Noms des jours en français
-  const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   // Générer pour aujourd'hui, demain et après-demain
   for (let i = 0; i < 3; i++) {
@@ -229,7 +260,7 @@ const generateSchedule = (agency: Agency): ScheduleDay[] => {
     date.setDate(today.getDate() + i);
 
     const formattedDate = date.toISOString().split('T')[0];
-    const dayName = i === 0 ? "Aujourd'hui" : i === 1 ? "Demain" : dayNames[date.getDay()];
+    const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayNames[date.getDay()];
 
     // Créer les voyages pour cette journée
     const trips: Trip[] = agency.routes.slice(0, 4).map((route, index) => {
@@ -252,9 +283,9 @@ const generateSchedule = (agency: Agency): ScheduleDay[] => {
         driver: {
           name: ['Jean Abena', 'Samuel Tchoumi', 'Martine Ngono'][index % 3],
           photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${agency.id}_${index}`,
-          experience: `${5 + index} ans d'expérience`
+          experience: `${5 + index} years experience`
         },
-        stops: ['Yaoundé Centre', 'Point Intermédiaire', route.name.split('→')[1]?.trim() || 'Destination'],
+        stops: ['Yaoundé Centre', 'Intermediate Stop', route.name.split('→')[1]?.trim() || 'Destination'],
         duration: route.duration
       };
     });
@@ -376,10 +407,10 @@ export default function AgencyDetailPage() {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center group">
-          <div className="w-24 h-24 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-3xl flex items-center justify-center mb-6 animate-pulse group-hover:scale-110 transition-transform">
+          <div className="w-24 h-24 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-2xl flex items-center justify-center mb-6 animate-pulse group-hover:scale-110 transition-transform">
             <Bus className="h-12 w-12 text-cyan-500 animate-bounce" />
           </div>
-          <div className="text-gray-400 font-black uppercase tracking-widest text-xs">Analyse du trajet...</div>
+          <div className="text-gray-400 font-black uppercase tracking-widest text-xs">Analyzing trip...</div>
         </div>
       </div>
     );
@@ -388,12 +419,12 @@ export default function AgencyDetailPage() {
   if (!agency) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-950 py-12 flex items-center justify-center">
-        <div className="max-w-md w-full px-8 text-center bg-gray-50 dark:bg-slate-900 p-12 rounded-[3rem] border border-gray-100 dark:border-slate-800">
+        <div className="max-w-md w-full px-8 text-center bg-gray-50 dark:bg-slate-900 p-12 rounded-3xl border border-gray-100 dark:border-slate-800">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
-          <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight mb-4">Agence non trouvée</h2>
-          <p className="text-gray-500 dark:text-slate-400 mb-8">Désolé, nous ne parvenons pas à trouver les détails de cette agence.</p>
-          <Link href="/agencies" className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:brightness-110 transition-all shadow-lg shadow-cyan-500/20">
-            ← Retour aux agences
+          <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight mb-4">Agency not found</h2>
+          <p className="text-gray-500 dark:text-slate-400 mb-8">Sorry, we can&apos;t find the details for this agency.</p>
+          <Link href="/agencies" className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:brightness-110 transition-all shadow-lg shadow-cyan-500/20">
+            ← Back to agencies
           </Link>
         </div>
       </div>
@@ -407,10 +438,10 @@ export default function AgencyDetailPage() {
       {/* Modal détails voyage */}
       {selectedTrip && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800 shadow-2xl">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800 shadow-2xl">
             <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-slate-800 px-8 py-6 flex justify-between items-center z-10">
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight">Détails du Voyage</h2>
-              <button onClick={() => setSelectedTrip(null)} className="p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 rounded-2xl transition-all">
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight">Trip Details</h2>
+              <button onClick={() => setSelectedTrip(null)} className="p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 rounded-xl transition-all">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -420,40 +451,40 @@ export default function AgencyDetailPage() {
               <div className="mb-8">
                 <div className="flex justify-between items-start mb-6 gap-4">
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400 mb-2 block">Trajet direct</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400 mb-2 block">Direct trip</span>
                     <h3 className="font-black text-4xl text-gray-900 dark:text-white italic tracking-tighter">{selectedTrip.destination}</h3>
-                    <p className="text-gray-500 dark:text-slate-400 mt-2 font-bold">{selectedTrip.time} • Durée: {selectedTrip.duration}</p>
+                    <p className="text-gray-500 dark:text-slate-400 mt-2 font-bold">{selectedTrip.time} • Duration: {selectedTrip.duration}</p>
                   </div>
                   <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getPriceTypeColor(selectedTrip.priceType)}`}>
                     {selectedTrip.priceType}
                   </span>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-slate-800/50 rounded-3xl p-6 border border-gray-100 dark:border-slate-800/50">
-                  <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700">
+                <div className="bg-gray-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-gray-100 dark:border-slate-800/50">
+                  <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
                     <div>
-                      <p className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Prix par personne</p>
+                      <p className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Price per person</p>
                       <p className="text-4xl font-black text-cyan-600 dark:text-cyan-400 italic tracking-tighter">{selectedTrip.price} FCFA</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Places disponibles</p>
+                      <p className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Available seats</p>
                       <p className="text-3xl font-black text-emerald-500 italic tracking-tighter">{selectedTrip.availableSeats}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setIsBookingSeat(true)}
-                    className="w-full mt-6 py-5 bg-gradient-to-br from-slate-900 to-slate-950 dark:from-white dark:to-slate-100 text-white dark:text-slate-950 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] transition-all shadow-xl shadow-black/10 active:scale-95"
+                    className="w-full mt-6 py-5 bg-gradient-to-br from-slate-900 to-slate-950 dark:from-white dark:to-slate-100 text-white dark:text-slate-950 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] transition-all shadow-xl shadow-black/10 active:scale-95"
                   >
                     <LayoutGrid className="h-5 w-5" />
-                    Choisir ma place en 3D
+                    Select my seat in 3D
                   </button>
                 </div>
               </div>
 
               {/* Infos chauffeur */}
-              <div className="flex items-center mb-8 p-6 bg-gray-50 dark:bg-slate-800/30 rounded-3xl border border-gray-100 dark:border-slate-800">
+              <div className="flex items-center mb-8 p-6 bg-gray-50 dark:bg-slate-800/30 rounded-2xl border border-gray-100 dark:border-slate-800">
                 <div className="relative">
-                  <img src={selectedTrip.driver.photo} alt="Chauffeur" className="w-20 h-20 rounded-2xl mr-6 border-2 border-white dark:border-slate-700 shadow-md" />
+                  <img src={selectedTrip.driver.photo} alt="Chauffeur" className="w-20 h-20 rounded-xl mr-6 border-2 border-white dark:border-slate-700 shadow-md" />
                   <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white border-2 border-white dark:border-slate-800 shadow-lg">
                     <CheckCircle className="h-4 w-4" />
                   </div>
@@ -470,10 +501,10 @@ export default function AgencyDetailPage() {
 
               {/* Infos bus avec PHOTO DE L'AGENCE */}
               <div className="mb-8">
-                <h3 className="font-black text-xs text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 italic">Spécifications du Bus</h3>
+                <h3 className="font-black text-xs text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 italic">Bus Specifications</h3>
 
                 {/* PHOTO DU BUS - TOUJOURS LA MÊME POUR L'AGENCE */}
-                <div className="relative group overflow-hidden rounded-[2rem] border border-gray-100 dark:border-slate-800 shadow-xl mb-6">
+                <div className="relative group overflow-hidden rounded-2xl border border-gray-100 dark:border-slate-800 shadow-xl mb-6">
                   <AgencyBusPhoto
                     agencyName={agencyName}
                     className="w-full h-64 group-hover:scale-110 transition-transform duration-700"
@@ -481,29 +512,29 @@ export default function AgencyDetailPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   <div className="absolute bottom-6 left-6 flex items-center gap-3">
                     <div className="px-4 py-2 bg-white/20 backdrop-blur-md rounded-xl text-white font-black text-[10px] uppercase tracking-widest border border-white/20">
-                      Modèle: {selectedTrip.bus.model}
+                      Model: {selectedTrip.bus.model}
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-800">
-                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Matricule</p>
+                  <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-800">
+                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">License Plate</p>
                     <p className="font-black text-gray-900 dark:text-white italic tracking-tight">{selectedTrip.bus.plateNumber}</p>
                   </div>
                   <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-800">
-                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Capacité</p>
-                    <p className="font-black text-gray-900 dark:text-white italic tracking-tight">70 Places</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Capacity</p>
+                    <p className="font-black text-gray-900 dark:text-white italic tracking-tight">70 Seats</p>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-[10px] text-gray-400 dark:text-slate-500 uppercase font-black tracking-widest mb-4 italic">Commodités à bord</p>
+                  <p className="text-[10px] text-gray-400 dark:text-slate-500 uppercase font-black tracking-widest mb-4 italic">Onboard Amenities</p>
                   <div className="flex flex-wrap gap-3">
                     {selectedTrip.bus.amenities.map((amenity, index) => (
                       <span key={index} className="px-4 py-2 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-100 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
                         {getFeatureIcon(amenity)}
-                        {amenity}
+                        {translateFeature(amenity)}
                       </span>
                     ))}
                   </div>
@@ -512,7 +543,7 @@ export default function AgencyDetailPage() {
 
               {/* Arrêts */}
               <div className="mb-6">
-                <h3 className="font-bold text-lg mb-3">Itinéraire</h3>
+                <h3 className="font-bold text-lg mb-3">Itinerary</h3>
                 <div className="space-y-3">
                   {selectedTrip.stops.map((stop, index) => (
                     <div key={index} className="flex items-center">
@@ -524,9 +555,9 @@ export default function AgencyDetailPage() {
                       </div>
                       <div>
                         <p className="font-medium">{stop}</p>
-                        {index === 0 && <p className="text-sm text-gray-600">Départ: {selectedTrip.time}</p>}
+                        {index === 0 && <p className="text-sm text-gray-600">Departure: {selectedTrip.time}</p>}
                         {index === selectedTrip.stops.length - 1 && (
-                          <p className="text-sm text-gray-600">Arrivée estimée</p>
+                          <p className="text-sm text-gray-600">Estimated Arrival</p>
                         )}
                       </div>
                     </div>
@@ -540,10 +571,10 @@ export default function AgencyDetailPage() {
                   onClick={() => setSelectedTrip(null)}
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  Fermer
+                  Close
                 </button>
                 <button className="flex-1 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-bold hover:from-cyan-600 hover:to-blue-600">
-                  Réserver maintenant
+                  Book Now
                 </button>
               </div>
             </div>
@@ -554,10 +585,10 @@ export default function AgencyDetailPage() {
       {/* Modal planning complet sur 3 jours */}
       {showFullSchedule && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-[3rem] max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800 shadow-2xl">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800 shadow-2xl">
             <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-slate-800 px-8 py-6 flex justify-between items-center z-10">
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight">Planning Complet - {agency.userName}</h2>
-              <button onClick={() => setShowFullSchedule(false)} className="p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 rounded-2xl transition-all">
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight">Full Schedule - {agency.userName}</h2>
+              <button onClick={() => setShowFullSchedule(false)} className="p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 rounded-xl transition-all">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -570,15 +601,15 @@ export default function AgencyDetailPage() {
                     {day.dayName} <span className="mx-3 text-gray-300 dark:text-slate-700">•</span> <span className="text-cyan-600 dark:text-cyan-400 opacity-60 font-bold">{day.date}</span>
                   </h3>
 
-                  <div className="overflow-hidden rounded-3xl border border-gray-100 dark:border-slate-800">
+                  <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-slate-800">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-gray-50 dark:bg-slate-800/50">
-                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Heure</th>
+                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</th>
                           <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Destination</th>
                           <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
-                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Prix</th>
-                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Disponibilité</th>
+                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Price</th>
+                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Availability</th>
                           <th className="py-5 px-6 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Action</th>
                         </tr>
                       </thead>
@@ -606,7 +637,7 @@ export default function AgencyDetailPage() {
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${trip.availableSeats > 10 ? 'text-emerald-500' :
                                   trip.availableSeats > 5 ? 'text-amber-500' : 'text-red-500'
                                   }`}>
-                                  {trip.availableSeats} places libres
+                                  {trip.availableSeats} free seats
                                 </span>
                               </div>
                             </td>
@@ -618,7 +649,7 @@ export default function AgencyDetailPage() {
                                 }}
                                 className="px-6 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-black dark:hover:bg-slate-700 transition-all flex items-center justify-center ml-auto"
                               >
-                                Détails
+                                Details
                                 <ChevronRight className="h-4 w-4 ml-2" />
                               </button>
                             </td>
@@ -631,19 +662,19 @@ export default function AgencyDetailPage() {
               ))}
 
               <div className="mt-8 p-8 bg-gray-50 dark:bg-slate-800/50 rounded-3xl border border-gray-100 dark:border-slate-800">
-                <h4 className="font-black text-[10px] text-gray-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-4 italic">Guide des Tarifs</h4>
+                <h4 className="font-black text-[10px] text-gray-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-4 italic">Pricing Guide</h4>
                 <div className="flex flex-wrap gap-8">
                   <div className="flex items-center">
                     <div className="w-3 h-3 rounded-full bg-blue-500 mr-3 shadow-lg shadow-blue-500/20"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">Standard : Confort essentiel</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">Standard: Essential Comfort</span>
                   </div>
                   <div className="flex items-center">
                     <div className="w-3 h-3 rounded-full bg-purple-500 mr-3 shadow-lg shadow-purple-500/20"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">VIP : Service Prestige</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">VIP: Prestige Service</span>
                   </div>
                   <div className="flex items-center">
                     <div className="w-3 h-3 rounded-full bg-amber-500 mr-3 shadow-lg shadow-amber-500/20"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">Premium : Luxe Ultime</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">Premium: Ultimate Luxury</span>
                   </div>
                 </div>
               </div>
@@ -673,12 +704,12 @@ export default function AgencyDetailPage() {
 
               <h2 className="text-xl sm:text-2xl font-black text-white italic tracking-tighter flex items-center gap-3">
                 <Bus className="h-6 w-6 text-cyan-500" />
-                SÉLECTION DU SIÈGE
+                SEAT SELECTION
               </h2>
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-slate-400 text-xs">Dest: <span className="text-white font-bold">{selectedTrip.destination}</span></span>
                 <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-                <span className="text-slate-400 text-xs">Départ: <span className="text-white font-bold">{selectedTrip.time}</span></span>
+                <span className="text-slate-400 text-xs">Departure: <span className="text-white font-bold">{selectedTrip.time}</span></span>
               </div>
             </div>
 
@@ -705,7 +736,7 @@ export default function AgencyDetailPage() {
                       <div className="flex justify-between items-end">
                         <p className="text-5xl font-black text-white italic tracking-tighter">#{tempSelectedSeat}</p>
                         <div className="text-right pb-1">
-                          <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">Tarif</p>
+                          <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">Fare</p>
                           <p className="text-xl font-black text-white">{selectedTrip.price} F</p>
                         </div>
                       </div>
@@ -720,7 +751,7 @@ export default function AgencyDetailPage() {
                         <div className="h-px bg-white/5 w-full"></div>
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col">
-                            <span className="text-[8px] text-slate-500 uppercase font-black">Paiement via</span>
+                            <span className="text-[8px] text-slate-500 uppercase font-black">Payment through</span>
                             <span className="text-xs text-white font-bold">Orange Money</span>
                           </div>
                           <div className="w-4 h-4 rounded-full border-4 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]"></div>
@@ -747,12 +778,12 @@ export default function AgencyDetailPage() {
                         {isProcessingPayment ? (
                           <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                         ) : (
-                          "Confirmer l'achat"
+                          "Confirm Purchase"
                         )}
                       </button>
 
                       <p className="text-[9px] text-center text-slate-500 font-medium leading-relaxed px-2">
-                        Paiement sécurisé. Votre ticket sera généré immédiatement après validation.
+                        Secure payment. Your ticket will be generated immediately after validation.
                       </p>
                     </div>
                   </div>
@@ -774,17 +805,17 @@ export default function AgencyDetailPage() {
                 <CheckCircle className="h-12 w-12 text-white" />
               </div>
 
-              <h2 className="text-3xl font-black text-white italic tracking-tighter mb-2 uppercase">PAIEMENT RÉUSSI !</h2>
+              <h2 className="text-3xl font-black text-white italic tracking-tighter mb-2 uppercase">PAYMENT SUCCESSFUL !</h2>
               <div className="text-emerald-400 font-bold tracking-widest text-[10px] uppercase mb-6 flex items-center justify-center gap-2">
                 <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
-                Transaction Confirmée
+                Transaction Confirmed
                 <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
               </div>
 
               <div className="py-6 border-y border-white/5 mb-8">
-                <p className="text-slate-400 text-sm mb-1">Votre place est réservée</p>
-                <p className="text-5xl font-black text-white italic tracking-tighter">SIÈGE #{showBookingSuccess}</p>
-                <p className="text-slate-500 text-[10px] mt-4 uppercase font-medium font-bold italic tracking-tight">Bon voyage avec TravYotei !</p>
+                <p className="text-slate-400 text-sm mb-1">Your seat is reserved</p>
+                <p className="text-5xl font-black text-white italic tracking-tighter">SEAT #{showBookingSuccess}</p>
+                <p className="text-slate-500 text-[10px] mt-4 uppercase font-medium font-bold italic tracking-tight">Have a nice trip with TravYotei !</p>
               </div>
 
               <button
@@ -794,7 +825,7 @@ export default function AgencyDetailPage() {
                 }}
                 className="w-full py-5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-2xl font-black uppercase text-sm tracking-widest transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-emerald-500/20"
               >
-                Terminer
+                Finish
               </button>
             </div>
           </div>
@@ -806,7 +837,7 @@ export default function AgencyDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Link href="/agencies" className="group inline-flex items-center text-gray-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors font-bold uppercase text-[10px] tracking-[0.2em]">
             <ArrowLeft className="h-4 w-4 mr-3 group-hover:-translate-x-1 transition-transform" />
-            Retour à l&apos;exploration
+            Back to exploration
           </Link>
         </div>
       </div>
@@ -842,7 +873,7 @@ export default function AgencyDetailPage() {
                   <div className="flex items-center px-4 py-2 bg-black/20 backdrop-blur-md rounded-xl border border-white/10">
                     <Star className="h-5 w-5 text-yellow-400 fill-current" />
                     <span className="ml-2 text-white font-black text-xl">{agency.rating}</span>
-                    <span className="ml-2 text-white/60 font-medium tracking-tight">({agency.reviewCount} avis)</span>
+                    <span className="ml-2 text-white/60 font-medium tracking-tight">({agency.reviewCount} reviews)</span>
                   </div>
                   <div className="flex items-center text-white/80 font-bold tracking-tight">
                     <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mr-3 border border-white/20">
@@ -862,7 +893,7 @@ export default function AgencyDetailPage() {
                 }}
                 className="px-10 py-5 bg-white dark:bg-cyan-500 text-slate-900 dark:text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:brightness-110 shadow-[0_20px_50px_rgba(8,_112,_184,_0.2)] active:scale-95 transition-all text-center"
               >
-                Planifier un trajet
+                Plan a trip
               </button>
             </div>
           </div>
@@ -879,8 +910,8 @@ export default function AgencyDetailPage() {
               <div className="absolute top-0 right-0 p-8 opacity-5">
                 <Building className="w-32 h-32 text-cyan-500" />
               </div>
-              <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-4 italic">Identité & Vision</h2>
-              <h3 className="text-3xl font-black text-gray-900 dark:text-white italic tracking-tight mb-6 uppercase">À propos de {agencyName}</h3>
+              <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-4 italic">Identity & Vision</h2>
+              <h3 className="text-3xl font-black text-gray-900 dark:text-white italic tracking-tight mb-6 uppercase">About {agencyName}</h3>
               <p className="text-gray-600 dark:text-slate-400 mb-10 leading-relaxed text-lg font-medium">{agency.description}</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -889,7 +920,7 @@ export default function AgencyDetailPage() {
                     <Phone className="h-6 w-6 text-cyan-500" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Contact Direct</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Direct Contact</div>
                     <div className="font-black text-gray-900 dark:text-white italic tracking-tight text-xl">{agency.phoneNumber}</div>
                   </div>
                 </div>
@@ -898,7 +929,7 @@ export default function AgencyDetailPage() {
                     <MapPin className="h-6 w-6 text-cyan-500" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Localisation</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Location</div>
                     <div className="font-black text-gray-900 dark:text-white italic tracking-tight text-lg">{agency.address}</div>
                   </div>
                 </div>
@@ -908,8 +939,8 @@ export default function AgencyDetailPage() {
             {/* Routes avec 3 types de prix */}
             <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-xl p-10 border border-gray-100 dark:border-slate-800">
               <div className="mb-10 text-center md:text-left">
-                <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-4 italic">Tarification Flexible</h2>
-                <h3 className="text-3xl font-black text-gray-900 dark:text-white italic tracking-tight uppercase">Routes et Classes de Voyage</h3>
+                <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-4 italic">Flexible Pricing</h2>
+                <h3 className="text-3xl font-black text-gray-900 dark:text-white italic tracking-tight uppercase">Routes and Travel Classes</h3>
               </div>
 
               <div className="space-y-12">
@@ -943,22 +974,22 @@ export default function AgencyDetailPage() {
                         <ul className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400 space-y-3 mb-8">
                           <li className="flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-emerald-500" />
-                            Siège Classique
+                            Classic Seat
                           </li>
                           <li className="flex items-center gap-2">
                             <X className="h-4 w-4 text-gray-300 dark:text-slate-600" />
-                            WiFi Inclus
+                            WiFi Included
                           </li>
                         </ul>
                         <button className="w-full py-4 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 dark:hover:bg-slate-600 transition-all active:scale-95">
-                          SÉLECTIONNER
+                          SELECT
                         </button>
                       </div>
 
                       {/* VIP */}
                       <div className="relative bg-purple-500/5 dark:bg-purple-500/10 rounded-[2rem] p-8 border-2 border-purple-200 dark:border-purple-500/30 shadow-xl shadow-purple-500/5 hover:border-purple-500 transition-all duration-300">
                         <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-purple-600 text-white text-[8px] font-black uppercase tracking-[0.3em] rounded-full shadow-lg">
-                          RECOMMANDÉ
+                          RECOMMENDED
                         </div>
                         <div className="flex justify-between items-start mb-6 text-purple-600 dark:text-purple-400">
                           <div className="text-2xl font-black italic tracking-tighter">PRESTIGE VIP</div>
@@ -969,7 +1000,7 @@ export default function AgencyDetailPage() {
                         <ul className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-300 space-y-3 mb-8">
                           <li className="flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-emerald-500" />
-                            Siège Inclinable
+                            Reclining Seat
                           </li>
                           <li className="flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-emerald-500" />
@@ -977,14 +1008,14 @@ export default function AgencyDetailPage() {
                           </li>
                         </ul>
                         <button className="w-full py-4 bg-purple-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all active:scale-95 shadow-lg shadow-purple-500/20">
-                          SÉLECTIONNER
+                          SELECT
                         </button>
                       </div>
 
                       {/* Premium */}
                       <div className="relative bg-amber-500/5 dark:bg-amber-500/10 rounded-[2rem] p-8 border border-amber-200 dark:border-amber-800/50 hover:border-amber-500 transition-all duration-300">
                         <div className="flex justify-between items-start mb-6 text-amber-600 dark:text-amber-400">
-                          <div className="text-2xl font-black italic tracking-tighter">PREMIUM LUXE</div>
+                          <div className="text-2xl font-black italic tracking-tighter">PREMIUM LUXURY</div>
                         </div>
                         <div className="text-4xl font-black text-gray-900 dark:text-white mb-6 italic tracking-tighter">
                           {route.premiumPrice} <span className="text-xs font-bold uppercase tracking-widest text-gray-400">f</span>
@@ -992,15 +1023,15 @@ export default function AgencyDetailPage() {
                         <ul className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-300 space-y-3 mb-8">
                           <li className="flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-emerald-500" />
-                            Siège-lit 180°
+                            180° Sleeper Seat
                           </li>
                           <li className="flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-emerald-500" />
-                            Repas Complet
+                            Full Meal
                           </li>
                         </ul>
                         <button className="w-full py-4 bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-50 dark:hover:bg-slate-600 transition-all active:scale-95">
-                          SÉLECTIONNER
+                          SELECT
                         </button>
                       </div>
                     </div>
@@ -1014,10 +1045,10 @@ export default function AgencyDetailPage() {
           <div className="space-y-12">
             {/* Horaires du jour */}
             <div id="daily-schedule" className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-xl p-8 border border-gray-100 dark:border-slate-800 scroll-mt-32">
-              <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-6 italic">Départs du Jour</h2>
+              <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-6 italic">Daily Departures</h2>
               <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase italic tracking-tighter mb-8 flex items-center">
                 <Calendar className="h-5 w-5 mr-3 text-cyan-500" />
-                Aujourd&apos;hui
+                Today
               </h3>
 
               <div className="space-y-4">
@@ -1044,7 +1075,7 @@ export default function AgencyDetailPage() {
                 onClick={() => setShowFullSchedule(true)}
                 className="w-full mt-8 px-6 py-4 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:brightness-110 transition-all active:scale-95 shadow-xl shadow-black/10"
               >
-                Tout le planning
+                Full Schedule
               </button>
             </div>
 
@@ -1058,7 +1089,7 @@ export default function AgencyDetailPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="text-4xl font-black italic tracking-tighter text-white uppercase">{agency.fleetSize}</div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400/60 mt-2">Bus opérationnels</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400/60 mt-2">Operational buses</div>
                   </div>
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
                     <Bus className="h-6 w-6 text-cyan-400" />
@@ -1067,7 +1098,7 @@ export default function AgencyDetailPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="text-4xl font-black italic tracking-tighter text-white uppercase">{agency.yearsOperating}y</div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400/60 mt-2">D&apos;expertise</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400/60 mt-2">Of expertise</div>
                   </div>
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
                     <Award className="h-6 w-6 text-cyan-400" />
@@ -1076,7 +1107,7 @@ export default function AgencyDetailPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="text-4xl font-black italic tracking-tighter text-white uppercase">98%</div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400/60 mt-2">De ponctualité</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400/60 mt-2">Punctuality</div>
                   </div>
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
                     <Zap className="h-6 w-6 text-cyan-400" />
@@ -1087,14 +1118,14 @@ export default function AgencyDetailPage() {
 
             {/* Services */}
             <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-xl p-10 border border-gray-100 dark:border-slate-800">
-              <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-10 italic">Expérience Voyageur</h2>
+              <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-10 italic">Traveler Experience</h2>
               <div className="grid grid-cols-1 gap-4">
                 {agency.features.map((feature, index) => (
                   <div key={index} className="flex items-center p-4 bg-gray-50 dark:bg-slate-800/30 rounded-2xl border border-gray-100 dark:border-slate-800">
                     <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center mr-4 shadow-sm text-cyan-500">
                       {getFeatureIcon(feature)}
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-slate-300">{feature}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-slate-300">{translateFeature(feature)}</span>
                   </div>
                 ))}
               </div>
@@ -1102,13 +1133,13 @@ export default function AgencyDetailPage() {
               {/* Options de service */}
               <div className="mt-8 pt-8 border-t border-gray-50 dark:border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">Service sur place</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">On-site Service</span>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${agency.hasOnSiteService ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
                     {agency.hasOnSiteService ? <CheckCircle className="h-4 w-4" /> : <X className="h-4 w-4" />}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">Réservation Web</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">Online Booking</span>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${agency.hasOnlineAppointments ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
                     {agency.hasOnlineAppointments ? <CheckCircle className="h-4 w-4" /> : <X className="h-4 w-4" />}
                   </div>

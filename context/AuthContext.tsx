@@ -45,10 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Protect routes based on authentication
   useEffect(() => {
     if (!loading) {
-      const publicRoutes = ['/client-join', '/agency-join', '/', '/agencies', '/services', '/contact'];
-      const isPublicRoute = publicRoutes.includes(pathname) || 
-                           pathname.startsWith('/api/') || 
-                           pathname.startsWith('/_next/');
+      const publicRoutes = ['/client-join', '/agency-join', '/', '/agencies', '/agencies/1', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000000000000'];
+      const isPublicRoute = publicRoutes.includes(pathname) ||
+        pathname.startsWith('/api/') ||
+        pathname.startsWith('/_next/');
 
       if (!user && !isPublicRoute) {
         router.push('/client-join');
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await fetch('/api/auth/validate', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
+
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
@@ -119,13 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      
+
       // Store token and user data
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user_data', JSON.stringify(data.user));
-      
+
       setUser(data.user);
-      
+
       // Redirect based on role
       redirectToDashboard(data.user.role);
     } catch (error) {
@@ -150,13 +150,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      
+
       // Store token and user data
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user_data', JSON.stringify(data.user));
-      
+
       setUser(data.user);
-      
+
       // Redirect based on role
       redirectToDashboard(data.user.role);
     } catch (error) {
