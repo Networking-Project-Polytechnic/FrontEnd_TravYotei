@@ -157,6 +157,7 @@ interface Trip {
   };
   stops: string[];
   duration: string;
+  galleryImages: string[];
 }
 
 // Feature translation mapping
@@ -246,58 +247,71 @@ const AgencyBusPhoto = ({ agencyName, className = "" }: { agencyName: string; cl
   );
 };
 
-// Générer le planning pour 3 jours
-const generateSchedule = (agency: Agency): ScheduleDay[] => {
-  const today = new Date();
-  const days: ScheduleDay[] = [];
-
-  // Noms des jours en français
+// Fonction pour générer des voyages pour une date spécifique
+const generateTripsForDate = (agency: Agency, date: Date): ScheduleDay => {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const formattedDate = date.toISOString().split('T')[0];
 
-  // Générer pour aujourd'hui, demain et après-demain
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+
+  const diffTime = targetDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  let dayName = dayNames[date.getDay()];
+  if (diffDays === 0) dayName = "Today";
+  else if (diffDays === 1) dayName = "Tomorrow";
+
+  const trips: Trip[] = agency.routes.slice(0, 4).map((route, index) => {
+    const times = ['6:00', '8:00', '14:00', '20:00'];
+    const priceType = ['standard', 'vip', 'premium'][index % 3] as 'standard' | 'vip' | 'premium';
+
+    return {
+      id: `${agency.id}_${formattedDate}_${index}`,
+      time: times[index],
+      destination: route.name.split('→')[1]?.trim() || route.name,
+      priceType,
+      price: priceType === 'standard' ? route.standardPrice :
+        priceType === 'vip' ? route.vipPrice : route.premiumPrice,
+      availableSeats: Math.floor(Math.random() * 20) + 5,
+      bus: {
+        model: ['Volvo B8R 2023', 'Mercedes Sprinter 2024', 'Toyota Coaster'][index % 3],
+        plateNumber: `CM-${String.fromCharCode(65 + index)}${String.fromCharCode(65 + (date.getDay() % 26))}-${100 + index}`,
+        amenities: ['WiFi', 'USB Charging', 'AC', 'TV', 'Toilet']
+      },
+      driver: {
+        name: ['Jean Abena', 'Samuel Tchoumi', 'Martine Ngono'][index % 3],
+        photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${agency.id}_${index}`,
+        experience: `${5 + index} years experience`
+      },
+      stops: ['Yaoundé Centre', 'Intermediate Stop', route.name.split('→')[1]?.trim() || 'Destination'],
+      duration: route.duration,
+      galleryImages: [
+        getAgencyAssets(agency.userName).busPhoto || "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=1000",
+        "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&q=80&w=1000",
+        "https://images.unsplash.com/photo-1562620644-65bb403e6fb2?auto=format&fit=crop&q=80&w=1000",
+        "https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&q=80&w=1000"
+      ]
+    };
+  });
+
+  return {
+    date: formattedDate,
+    dayName,
+    trips
+  };
+};
+
+const generateInitialSchedule = (agency: Agency): ScheduleDay[] => {
+  const schedule: ScheduleDay[] = [];
   for (let i = 0; i < 3; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-
-    const formattedDate = date.toISOString().split('T')[0];
-    const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayNames[date.getDay()];
-
-    // Créer les voyages pour cette journée
-    const trips: Trip[] = agency.routes.slice(0, 4).map((route, index) => {
-      const times = ['6:00', '8:00', '14:00', '20:00'];
-      const priceType = ['standard', 'vip', 'premium'][index % 3] as 'standard' | 'vip' | 'premium';
-
-      return {
-        id: `${agency.id}_${i}_${index}`,
-        time: times[index],
-        destination: route.name.split('→')[1]?.trim() || route.name,
-        priceType,
-        price: priceType === 'standard' ? route.standardPrice :
-          priceType === 'vip' ? route.vipPrice : route.premiumPrice,
-        availableSeats: Math.floor(Math.random() * 20) + 5,
-        bus: {
-          model: ['Volvo B8R 2023', 'Mercedes Sprinter 2024', 'Toyota Coaster'][index % 3],
-          plateNumber: `CM-${String.fromCharCode(65 + index)}${String.fromCharCode(65 + i)}-${100 + index}`,
-          amenities: ['WiFi', 'USB Charging', 'AC', 'TV', 'Toilet']
-        },
-        driver: {
-          name: ['Jean Abena', 'Samuel Tchoumi', 'Martine Ngono'][index % 3],
-          photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${agency.id}_${index}`,
-          experience: `${5 + index} years experience`
-        },
-        stops: ['Yaoundé Centre', 'Intermediate Stop', route.name.split('→')[1]?.trim() || 'Destination'],
-        duration: route.duration
-      };
-    });
-
-    days.push({
-      date: formattedDate,
-      dayName,
-      trips
-    });
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    schedule.push(generateTripsForDate(agency, date));
   }
-
-  return days;
+  return schedule;
 };
 
 export default function AgencyDetailPage() {
@@ -306,12 +320,14 @@ export default function AgencyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [showFullSchedule, setShowFullSchedule] = useState(false);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [scheduleDays, setScheduleDays] = useState<ScheduleDay[]>([]);
   const [isBookingSeat, setIsBookingSeat] = useState(false);
   const [bookedSeats, setBookedSeats] = useState<Record<string, string[]>>({}); // tripId -> seatIds
   const [tempSelectedSeat, setTempSelectedSeat] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showBookingSuccess, setShowBookingSuccess] = useState<string | null>(null); // seat number
+  const [activeImgIndex, setActiveImgIndex] = useState(0);
 
   const initialOccupiedSeatsForTrip = useMemo(() => {
     if (!selectedTrip) return [];
@@ -336,7 +352,7 @@ export default function AgencyDetailPage() {
         const data = await getAgencyById(params.id as string);
         if (data) {
           setAgency(data);
-          setScheduleDays(generateSchedule(data));
+          setScheduleDays(generateInitialSchedule(data));
 
           // DEBUG: Afficher le chemin de l'image
           const assets = getAgencyAssets(data.userName);
@@ -356,6 +372,41 @@ export default function AgencyDetailPage() {
 
   const handleTripClick = (trip: Trip) => {
     setSelectedTrip(trip);
+    setActiveImgIndex(0);
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const pickedDate = new Date(e.target.value);
+    if (isNaN(pickedDate.getTime()) || !agency) return;
+
+    const newDay = generateTripsForDate(agency, pickedDate);
+
+    // Check if day already exists
+    const existingIndex = scheduleDays.findIndex(d => d.date === newDay.date);
+    if (existingIndex !== -1) {
+      setSelectedDayIndex(existingIndex);
+    } else {
+      setScheduleDays(prev => [...prev, newDay].sort((a, b) => a.date.localeCompare(b.date)));
+      // Find new index after sort
+      const newIndex = [...scheduleDays, newDay].sort((a, b) => a.date.localeCompare(b.date)).findIndex(d => d.date === newDay.date);
+      setSelectedDayIndex(newIndex);
+    }
+  };
+
+  const handleDeleteHistory = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation();
+    if (scheduleDays.length <= 1) return; // Keep at least one
+
+    setScheduleDays(prev => {
+      const newList = prev.filter((_, i) => i !== index);
+      // Adjust selected index if needed
+      if (selectedDayIndex >= index && selectedDayIndex > 0) {
+        setSelectedDayIndex(prevIdx => prevIdx - 1);
+      } else if (selectedDayIndex >= newList.length) {
+        setSelectedDayIndex(newList.length - 1);
+      }
+      return newList;
+    });
   };
 
   // Fonction pour obtenir l'icône d'un service
@@ -407,7 +458,7 @@ export default function AgencyDetailPage() {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center group">
-          <div className="w-24 h-24 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-2xl flex items-center justify-center mb-6 animate-pulse group-hover:scale-110 transition-transform">
+          <div className="w-24 h-24 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-lg flex items-center justify-center mb-6 animate-pulse group-hover:scale-110 transition-transform">
             <Bus className="h-12 w-12 text-cyan-500 animate-bounce" />
           </div>
           <div className="text-gray-400 font-black uppercase tracking-widest text-xs">Analyzing trip...</div>
@@ -423,7 +474,7 @@ export default function AgencyDetailPage() {
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
           <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight mb-4">Agency not found</h2>
           <p className="text-gray-500 dark:text-slate-400 mb-8">Sorry, we can&apos;t find the details for this agency.</p>
-          <Link href="/agencies" className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:brightness-110 transition-all shadow-lg shadow-cyan-500/20">
+          <Link href="/agencies" className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-black uppercase text-xs tracking-widest hover:brightness-110 transition-all ">
             ← Back to agencies
           </Link>
         </div>
@@ -437,145 +488,194 @@ export default function AgencyDetailPage() {
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-500 pb-20">
       {/* Modal détails voyage */}
       {selectedTrip && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800 shadow-2xl">
-            <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-slate-800 px-8 py-6 flex justify-between items-center z-10">
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight">Trip Details</h2>
-              <button onClick={() => setSelectedTrip(null)} className="p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 rounded-xl transition-all">
-                <X className="h-5 w-5" />
-              </button>
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[60] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-500">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-full sm:max-h-[95vh] overflow-y-auto rounded-none sm:rounded-lg border-x sm:border border-gray-100 dark:border-slate-800 relative flex flex-col">
+
+            {/* Top Bar: Navigation & Thumbnails */}
+            <div className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex flex-col">
+              <div className="px-6 py-4 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
+                <button
+                  onClick={() => setSelectedTrip(null)}
+                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-cyan-500 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Close Gallery
+                </button>
+                <div className="flex gap-2">
+                  {selectedTrip.galleryImages.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImgIndex(i)}
+                      className={`w-12 h-12 rounded-md overflow-hidden border-2 transition-all ${activeImgIndex === i
+                        ? 'border-cyan-500 scale-105 shadow-sm'
+                        : 'border-transparent opacity-40 hover:opacity-100'
+                        }`}
+                    >
+                      <img src={img} className="w-full h-full object-cover" alt="" />
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setSelectedTrip(null)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-all"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="p-8">
-              {/* Infos de base */}
-              <div className="mb-8">
-                <div className="flex justify-between items-start mb-6 gap-4">
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400 mb-2 block">Direct trip</span>
-                    <h3 className="font-black text-4xl text-gray-900 dark:text-white italic tracking-tighter">{selectedTrip.destination}</h3>
-                    <p className="text-gray-500 dark:text-slate-400 mt-2 font-bold">{selectedTrip.time} • Duration: {selectedTrip.duration}</p>
-                  </div>
-                  <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getPriceTypeColor(selectedTrip.priceType)}`}>
-                    {selectedTrip.priceType}
-                  </span>
-                </div>
+            {/* Gallery Area */}
+            <div className="relative h-[400px] sm:h-[500px] bg-black overflow-hidden group/gallery flex-shrink-0">
+              <div className="absolute inset-0 transition-opacity duration-700">
+                <img
+                  src={selectedTrip.galleryImages[activeImgIndex]}
+                  className="w-full h-full object-cover"
+                  alt={`View ${activeImgIndex + 1}`}
+                />
+              </div>
 
-                <div className="bg-gray-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-gray-100 dark:border-slate-800/50">
-                  <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
-                    <div>
-                      <p className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Price per person</p>
-                      <p className="text-4xl font-black text-cyan-600 dark:text-cyan-400 italic tracking-tighter">{selectedTrip.price} FCFA</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Available seats</p>
-                      <p className="text-3xl font-black text-emerald-500 italic tracking-tighter">{selectedTrip.availableSeats}</p>
-                    </div>
-                  </div>
+              {/* High-Clarity Navigation Controls */}
+              {selectedTrip.galleryImages.length > 1 && (
+                <>
                   <button
-                    onClick={() => setIsBookingSeat(true)}
-                    className="w-full mt-6 py-5 bg-gradient-to-br from-slate-900 to-slate-950 dark:from-white dark:to-slate-100 text-white dark:text-slate-950 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] transition-all shadow-xl shadow-black/10 active:scale-95"
+                    onClick={() => setActiveImgIndex(prev => (prev === 0 ? selectedTrip.galleryImages.length - 1 : prev - 1))}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/90 dark:bg-slate-900/90 shadow-xl flex items-center justify-center rounded-full text-gray-900 dark:text-white hover:bg-white dark:hover:bg-slate-800 transition-all z-10"
                   >
-                    <LayoutGrid className="h-5 w-5" />
-                    Select my seat in 3D
+                    <ChevronRight className="h-6 w-6 rotate-180" />
                   </button>
-                </div>
-              </div>
+                  <button
+                    onClick={() => setActiveImgIndex(prev => (prev === selectedTrip.galleryImages.length - 1 ? 0 : prev + 1))}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/90 dark:bg-slate-900/90 shadow-xl flex items-center justify-center rounded-full text-gray-900 dark:text-white hover:bg-white dark:hover:bg-slate-800 transition-all z-10"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
+            </div>
 
-              {/* Infos chauffeur */}
-              <div className="flex items-center mb-8 p-6 bg-gray-50 dark:bg-slate-800/30 rounded-2xl border border-gray-100 dark:border-slate-800">
-                <div className="relative">
-                  <img src={selectedTrip.driver.photo} alt="Chauffeur" className="w-20 h-20 rounded-xl mr-6 border-2 border-white dark:border-slate-700 shadow-md" />
-                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white border-2 border-white dark:border-slate-800 shadow-lg">
-                    <CheckCircle className="h-4 w-4" />
+            {/* Essential Info Section: Below Image */}
+            <div className="bg-white dark:bg-slate-900 p-8 sm:p-12 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] rounded-md">
+                      {selectedTrip.priceType} CLASS
+                    </span>
+                    <span className="flex items-center gap-1.5 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                      <Clock className="h-3.5 w-3.5" />
+                      {selectedTrip.duration} JOURNEY
+                    </span>
                   </div>
-                </div>
-                <div>
-                  <h3 className="font-black text-xl text-gray-900 dark:text-white italic tracking-tight">{selectedTrip.driver.name}</h3>
-                  <p className="text-gray-500 dark:text-slate-400 text-sm font-bold opacity-75">{selectedTrip.driver.experience}</p>
-                  <div className="flex items-center mt-2 px-3 py-1 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 w-fit">
-                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span className="ml-1 font-black text-sm text-gray-900 dark:text-white">4.8</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Infos bus avec PHOTO DE L'AGENCE */}
-              <div className="mb-8">
-                <h3 className="font-black text-xs text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 italic">Bus Specifications</h3>
-
-                {/* PHOTO DU BUS - TOUJOURS LA MÊME POUR L'AGENCE */}
-                <div className="relative group overflow-hidden rounded-2xl border border-gray-100 dark:border-slate-800 shadow-xl mb-6">
-                  <AgencyBusPhoto
-                    agencyName={agencyName}
-                    className="w-full h-64 group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-6 left-6 flex items-center gap-3">
-                    <div className="px-4 py-2 bg-white/20 backdrop-blur-md rounded-xl text-white font-black text-[10px] uppercase tracking-widest border border-white/20">
-                      Model: {selectedTrip.bus.model}
+                  <h3 className="text-5xl sm:text-7xl font-black text-gray-900 dark:text-white italic tracking-tighter uppercase leading-none mb-6">
+                    {selectedTrip.destination}
+                  </h3>
+                  <div className="flex items-center gap-6 p-6 bg-gray-50 dark:bg-slate-800/30 rounded-lg border border-gray-100 dark:border-slate-800 w-fit">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Departure</span>
+                      <span className="text-3xl font-black text-gray-900 dark:text-white italic">{selectedTrip.time}</span>
+                    </div>
+                    <div className="w-px h-10 bg-gray-200 dark:bg-slate-700"></div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Status</span>
+                      <span className="text-xs font-black text-emerald-500 uppercase flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        ON TIME
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-800">
-                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">License Plate</p>
-                    <p className="font-black text-gray-900 dark:text-white italic tracking-tight">{selectedTrip.bus.plateNumber}</p>
+                <div className="w-full lg:w-80 bg-slate-900 dark:bg-slate-800 p-10 rounded-lg text-white relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <CreditCard className="w-20 h-20 rotate-12" />
                   </div>
-                  <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-800">
-                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Capacity</p>
-                    <p className="font-black text-gray-900 dark:text-white italic tracking-tight">70 Seats</p>
+                  <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-2 italic">Standard Price</p>
+                  <div className="flex items-baseline gap-2 mb-6">
+                    <span className="text-6xl font-black italic tracking-tighter">{selectedTrip.price}</span>
+                    <span className="text-sm font-bold opacity-40 uppercase tracking-widest">FCFA</span>
+                  </div>
+                  <div className="space-y-4 pt-6 border-t border-white/10">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Available Seats</span>
+                      <span className="text-xs font-black text-emerald-400">{selectedTrip.availableSeats} LEFT</span>
+                    </div>
+                    <button
+                      onClick={() => setIsBookingSeat(true)}
+                      className="w-full h-16 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-lg shadow-cyan-900/40 active:scale-95 flex items-center justify-center gap-3"
+                    >
+                      <Zap className="h-4 w-4" />
+                      Book Now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 sm:p-12 space-y-16">
+              {/* Info Grid: Driver & Vehicle */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="p-8 bg-gray-50 dark:bg-slate-800/40 rounded-lg border border-gray-100 dark:border-slate-800">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-8 italic">Assigned Pilot</h4>
+                  <div className="flex items-center">
+                    <img src={selectedTrip.driver.photo} alt="" className="w-20 h-20 rounded-lg object-cover grayscale" />
+                    <div className="ml-6">
+                      <div className="text-xl font-black text-gray-900 dark:text-white italic uppercase tracking-tighter">{selectedTrip.driver.name}</div>
+                      <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">{selectedTrip.driver.experience}</p>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <p className="text-[10px] text-gray-400 dark:text-slate-500 uppercase font-black tracking-widest mb-4 italic">Onboard Amenities</p>
-                  <div className="flex flex-wrap gap-3">
-                    {selectedTrip.bus.amenities.map((amenity, index) => (
-                      <span key={index} className="px-4 py-2 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-100 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                        {getFeatureIcon(amenity)}
-                        {translateFeature(amenity)}
-                      </span>
-                    ))}
+                <div className="p-8 bg-gray-50 dark:bg-slate-800/40 rounded-lg border border-gray-100 dark:border-slate-800">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-8 italic">Vehicle Details</h4>
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-lg flex items-center justify-center border border-gray-100 dark:border-slate-700">
+                      <Bus className="h-8 w-8 text-cyan-500" />
+                    </div>
+                    <div>
+                      <div className="text-xl font-black text-gray-900 dark:text-white italic uppercase tracking-tighter">{selectedTrip.bus.model}</div>
+                      <code className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedTrip.bus.plateNumber}</code>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Arrêts */}
-              <div className="mb-6">
-                <h3 className="font-bold text-lg mb-3">Itinerary</h3>
-                <div className="space-y-3">
-                  {selectedTrip.stops.map((stop, index) => (
-                    <div key={index} className="flex items-center">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${index === 0 ? 'bg-green-100 text-green-600' :
-                        index === selectedTrip.stops.length - 1 ? 'bg-red-100 text-red-600' :
-                          'bg-blue-100 text-blue-600'
-                        }`}>
-                        {index === 0 ? 'D' : index === selectedTrip.stops.length - 1 ? 'A' : index}
-                      </div>
-                      <div>
-                        <p className="font-medium">{stop}</p>
-                        {index === 0 && <p className="text-sm text-gray-600">Departure: {selectedTrip.time}</p>}
-                        {index === selectedTrip.stops.length - 1 && (
-                          <p className="text-sm text-gray-600">Estimated Arrival</p>
-                        )}
-                      </div>
+              {/* Amenities List - Minimalist */}
+              <div>
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-10 italic text-center">Comfort & Equipment</h4>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {selectedTrip.bus.amenities.map((amenity, index) => (
+                    <div key={index} className="px-6 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-lg flex items-center gap-3">
+                      <div className="text-cyan-500">{getFeatureIcon(amenity)}</div>
+                      <span className="text-[10px] font-black text-gray-600 dark:text-slate-300 uppercase tracking-widest">{translateFeature(amenity)}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setSelectedTrip(null)}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Close
-                </button>
-                <button className="flex-1 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-bold hover:from-cyan-600 hover:to-blue-600">
-                  Book Now
-                </button>
+              {/* Itinerary Path - Minimalist */}
+              <div className="max-w-xl mx-auto py-12">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-12 italic text-center">Journey Timeline</h4>
+                <div className="relative">
+                  <div className="absolute left-4 top-0 bottom-0 w-px bg-gray-100 dark:bg-slate-800"></div>
+                  <div className="space-y-12">
+                    {selectedTrip.stops.map((stop, index) => (
+                      <div key={index} className="flex items-start relative gap-8 pl-10">
+                        <div className={`absolute left-2.5 -translate-x-1/2 w-4 h-4 rounded-full border-4 border-white dark:border-slate-900 z-10 ${index === 0 ? 'bg-cyan-500' :
+                          index === selectedTrip.stops.length - 1 ? 'bg-emerald-500' :
+                            'bg-gray-300 dark:bg-slate-700'
+                          }`}></div>
+                        <div>
+                          <p className="text-xl font-black text-gray-900 dark:text-white italic uppercase tracking-tighter">{stop}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                            {index === 0 ? 'Initial Departure' :
+                              index === selectedTrip.stops.length - 1 ? 'Final Arrival Point' :
+                                'Scheduled Stop'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -585,98 +685,153 @@ export default function AgencyDetailPage() {
       {/* Modal planning complet sur 3 jours */}
       {showFullSchedule && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800 shadow-2xl">
-            <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-slate-800 px-8 py-6 flex justify-between items-center z-10">
+          <div className="bg-white dark:bg-slate-900 rounded-lg max-w-7xl w-full max-h-[90vh] overflow-hidden border border-gray-100 dark:border-slate-800 flex flex-col">
+            <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-slate-800 px-8 py-6 flex justify-between items-center z-10 flex-shrink-0">
               <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase italic tracking-tight">Full Schedule - {agency.userName}</h2>
-              <button onClick={() => setShowFullSchedule(false)} className="p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 rounded-xl transition-all">
+              <button onClick={() => setShowFullSchedule(false)} className="p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 rounded-lg transition-all">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-10">
-              {scheduleDays.map((day, dayIndex) => (
-                <div key={dayIndex} className="mb-12 last:mb-0">
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6 flex items-center italic uppercase tracking-tight">
-                    <Calendar className="h-6 w-6 text-cyan-600 dark:text-cyan-400 mr-4" />
-                    {day.dayName} <span className="mx-3 text-gray-300 dark:text-slate-700">•</span> <span className="text-cyan-600 dark:text-cyan-400 opacity-60 font-bold">{day.date}</span>
-                  </h3>
+            <div className="flex-1 flex flex-col sm:flex-row min-h-0">
+              {/* Left Side: Date Picker and Day Selector */}
+              <div className="w-full sm:w-72 md:w-80 flex-shrink-0 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-slate-800 p-6 sm:p-8 overflow-y-auto bg-gray-50 dark:bg-slate-800/30">
+                <div className="mb-8">
+                  <label htmlFor="custom-date" className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-3">Pick travel date</label>
+                  <input
+                    id="custom-date"
+                    type="date"
+                    defaultValue={scheduleDays[selectedDayIndex]?.date || new Date().toISOString().split('T')[0]}
+                    onChange={handleDateChange}
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  />
+                </div>
 
-                  <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-slate-800">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 dark:bg-slate-800/50">
-                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</th>
-                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Destination</th>
-                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
-                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Price</th>
-                          <th className="py-5 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Availability</th>
-                          <th className="py-5 px-6 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {day.trips.map((trip, tripIndex) => (
-                          <tr key={tripIndex} className="border-t border-gray-50 dark:border-slate-800 hover:bg-gray-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="py-6 px-6">
-                              <div className="font-black text-xl text-gray-900 dark:text-white italic tracking-tighter">{trip.time}</div>
-                            </td>
-                            <td className="py-6 px-6">
-                              <div className="font-black text-gray-900 dark:text-white uppercase text-sm tracking-tight">{trip.destination}</div>
-                              <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mt-1">{trip.duration}</div>
-                            </td>
-                            <td className="py-6 px-6">
-                              <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getPriceTypeColor(trip.priceType)}`}>
-                                {trip.priceType}
-                              </span>
-                            </td>
-                            <td className="py-6 px-6">
-                              <div className="font-black text-lg text-cyan-600 dark:text-cyan-400 italic tracking-tighter">{trip.price} <span className="text-[10px] uppercase font-bold tracking-widest">f</span></div>
-                            </td>
-                            <td className="py-6 px-6">
-                              <div className="flex items-center">
-                                <Users className="h-4 w-4 text-gray-400 mr-3" />
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${trip.availableSeats > 10 ? 'text-emerald-500' :
-                                  trip.availableSeats > 5 ? 'text-amber-500' : 'text-red-500'
-                                  }`}>
-                                  {trip.availableSeats} free seats
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-6 px-6 text-right">
-                              <button
-                                onClick={() => {
-                                  handleTripClick(trip);
-                                  setShowFullSchedule(false);
-                                }}
-                                className="px-6 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-black dark:hover:bg-slate-700 transition-all flex items-center justify-center ml-auto"
-                              >
-                                Details
-                                <ChevronRight className="h-4 w-4 ml-2" />
-                              </button>
-                            </td>
+                <div className="flex flex-col gap-3">
+                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">History/Quick Select</p>
+                  {scheduleDays.map((day, idx) => (
+                    <div key={idx} className="relative group/item">
+                      <button
+                        onClick={() => setSelectedDayIndex(idx)}
+                        className={`w-full px-4 py-4 rounded-lg font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 flex flex-col items-start transform ${selectedDayIndex === idx
+                          ? 'bg-slate-900 text-white dark:bg-cyan-600 scale-[1.02]'
+                          : 'bg-white dark:bg-slate-800 text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-slate-700'
+                          }`}
+                      >
+                        <span>{day.dayName}</span>
+                        <span className={`mt-1 font-bold opacity-60 ${selectedDayIndex === idx ? 'text-white' : 'text-gray-400'}`}>{day.date}</span>
+                      </button>
+
+                      {scheduleDays.length > 1 && (
+                        <button
+                          onClick={(e) => handleDeleteHistory(e, idx)}
+                          className={`absolute top-1/2 -translate-y-1/2 right-4 p-2 rounded-md transition-all duration-200 ${selectedDayIndex === idx
+                            ? 'text-white/40 hover:text-white hover:bg-white/10'
+                            : 'text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10'
+                            }`}
+                          title="Remove from history"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Side: Schedule Results */}
+              <div className="flex-1 p-6 sm:p-10 overflow-y-auto bg-white dark:bg-slate-900">
+                {scheduleDays[selectedDayIndex] ? (
+                  <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                    <div className="mb-10 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
+                      <div>
+                        <h3 className="text-4xl font-black text-gray-900 dark:text-white italic uppercase tracking-tighter">
+                          {scheduleDays[selectedDayIndex].dayName} Departures
+                        </h3>
+                        <p className="text-cyan-600 dark:text-cyan-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">
+                          {scheduleDays[selectedDayIndex].trips.length} AVAILABLE TRIPS FOUND
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700">
+                        <Calendar className="h-4 w-4 text-cyan-500" />
+                        <span className="text-sm font-black text-gray-900 dark:text-white italic">{scheduleDays[selectedDayIndex].date}</span>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-lg border border-gray-100 dark:border-slate-800">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50/80 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
+                            <th className="py-6 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic">Time</th>
+                            <th className="py-6 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic">Destination</th>
+                            <th className="py-6 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic">Class</th>
+                            <th className="py-6 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic">Fare</th>
+                            <th className="py-6 px-8 text-right text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
+                        </thead>
+                        <tbody>
+                          {scheduleDays[selectedDayIndex].trips.map((trip, tripIndex) => (
+                            <tr
+                              key={tripIndex}
+                              onClick={() => handleTripClick(trip)}
+                              className="group border-b border-gray-50 dark:border-slate-800/30 hover:bg-gray-50 dark:hover:bg-slate-800/20 transition-all cursor-pointer"
+                            >
+                              <td className="py-7 px-8">
+                                <span className="font-black text-2xl text-gray-900 dark:text-white italic tracking-tighter group-hover:text-cyan-600 transition-colors uppercase">{trip.time}</span>
+                              </td>
+                              <td className="py-7 px-8">
+                                <div className="font-black text-gray-900 dark:text-white uppercase text-base tracking-tight">{trip.destination}</div>
+                                <div className="text-[9px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mt-1">Est. {trip.duration} voyage</div>
+                              </td>
+                              <td className="py-7 px-8">
+                                <span className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${getPriceTypeColor(trip.priceType)}`}>
+                                  {trip.priceType}
+                                </span>
+                              </td>
+                              <td className="py-7 px-8">
+                                <div className="font-black text-xl text-gray-900 dark:text-white italic tracking-tighter">{trip.price} <span className="text-[10px] uppercase font-bold tracking-widest opacity-40">f</span></div>
+                              </td>
+                              <td className="py-7 px-8 text-right">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleTripClick(trip);
+                                  }}
+                                  className="px-5 py-2.5 bg-slate-900 dark:bg-slate-800 text-white group-hover:bg-cyan-600 transition-all rounded-lg font-black text-[9px] uppercase tracking-widest"
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-              <div className="mt-8 p-8 bg-gray-50 dark:bg-slate-800/50 rounded-3xl border border-gray-100 dark:border-slate-800">
-                <h4 className="font-black text-[10px] text-gray-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-4 italic">Pricing Guide</h4>
-                <div className="flex flex-wrap gap-8">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-3 shadow-lg shadow-blue-500/20"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">Standard: Essential Comfort</span>
+                    <div className="mt-12 p-8 bg-gray-50 dark:bg-slate-800/30 rounded-lg border border-gray-100 dark:border-slate-800 border-dashed">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-blue-600 mb-2">Standard</p>
+                          <p className="text-[10px] text-gray-500 font-bold leading-relaxed">Comfortable seating, WiFi and AC included.</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-purple-600 mb-2">Prestige VIP</p>
+                          <p className="text-[10px] text-gray-500 font-bold leading-relaxed">Reclining seats, USB charging, priority check-in.</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-amber-600 mb-2">Premium</p>
+                          <p className="text-[10px] text-gray-500 font-bold leading-relaxed">180° beds, in-flight meals, exclusive cabin.</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 mr-3 shadow-lg shadow-purple-500/20"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">VIP: Prestige Service</span>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center">
+                    <Calendar className="h-16 w-16 text-gray-200 mb-6" />
+                    <h3 className="text-xl font-black text-gray-300 uppercase italic">No trips found</h3>
+                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-2">Try selecting another date on the left</p>
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-amber-500 mr-3 shadow-lg shadow-amber-500/20"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400">Premium: Ultimate Luxury</span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -685,15 +840,15 @@ export default function AgencyDetailPage() {
 
       {/* MODAL SÉLECTION DE SIÈGE 3D + PAIEMENT SIMULÉ */}
       {isBookingSeat && selectedTrip && (
-        <div className="fixed inset-0 bg-slate-950/95 z-[60] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-slate-900 w-full h-full sm:max-w-6xl sm:max-h-[90vh] sm:rounded-3xl border border-slate-800 flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="fixed inset-0 bg-slate-950/95 z-[70] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-slate-900 w-full h-full sm:max-w-6xl sm:max-h-[90vh] sm:rounded-3xl border border-slate-800 flex flex-col overflow-hidden  relative">
             {/* Bouton Fermer */}
             <button
               onClick={() => {
                 setIsBookingSeat(false);
                 setTempSelectedSeat(null);
               }}
-              className="absolute top-6 right-6 z-50 p-3 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl transition-all"
+              className="absolute top-6 right-6 z-50 p-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-all"
             >
               <X className="h-6 w-6" />
             </button>
@@ -743,7 +898,7 @@ export default function AgencyDetailPage() {
                     </div>
 
                     <div className="space-y-4">
-                      <div className="p-4 bg-slate-800/40 rounded-2xl border border-white/5 space-y-3">
+                      <div className="p-4 bg-slate-800/40 rounded-lg border border-white/5 space-y-3">
                         <div className="flex items-center justify-between text-[10px] text-slate-400 uppercase font-bold tracking-widest">
                           <span>Service</span>
                           <span className="text-white">{selectedTrip.priceType}</span>
@@ -773,7 +928,7 @@ export default function AgencyDetailPage() {
                             setShowBookingSuccess(confirmedSeat);
                           }, 2000);
                         }}
-                        className="w-full h-16 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-cyan-500/20 disabled:opacity-50 flex items-center justify-center gap-3"
+                        className="w-full h-16 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg font-black uppercase text-xs tracking-widest hover:brightness-110 active:scale-95 transition-all  disabled:opacity-50 flex items-center justify-center gap-3"
                       >
                         {isProcessingPayment ? (
                           <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
@@ -796,8 +951,8 @@ export default function AgencyDetailPage() {
 
       {/* MODAL DE RÉUSSITE PREMIUM */}
       {showBookingSuccess && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-500">
-          <div className="bg-slate-900 border border-emerald-500/30 w-full max-w-md p-8 rounded-[3rem] shadow-[0_0_100px_rgba(16,185,129,0.2)] text-center relative overflow-hidden group">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-500">
+          <div className="bg-slate-900 border border-emerald-500/30 w-full max-w-md p-8 rounded-lg shadow-[0_0_100px_rgba(16,185,129,0.2)] text-center relative overflow-hidden group">
             <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-all duration-1000"></div>
 
             <div className="relative z-10">
@@ -823,7 +978,7 @@ export default function AgencyDetailPage() {
                   setShowBookingSuccess(null);
                   setIsBookingSeat(false);
                 }}
-                className="w-full py-5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-2xl font-black uppercase text-sm tracking-widest transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-emerald-500/20"
+                className="w-full py-5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg font-black uppercase text-sm tracking-widest transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-emerald-500/20"
               >
                 Finish
               </button>
@@ -852,8 +1007,8 @@ export default function AgencyDetailPage() {
             <div className="flex items-center">
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                <div className="relative bg-white dark:bg-slate-900 p-2 rounded-3xl border-4 border-white/10 dark:border-slate-800 shadow-2xl">
-                  <AgencyLogo agencyName={agencyName} className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl" />
+                <div className="relative bg-white dark:bg-slate-900 p-2 rounded-3xl border-4 border-white/10 dark:border-slate-800 ">
+                  <AgencyLogo agencyName={agencyName} className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg" />
                 </div>
               </div>
 
@@ -863,14 +1018,14 @@ export default function AgencyDetailPage() {
                     {agency.type}
                   </span>
                   {agency.rating >= 4.8 && (
-                    <span className="px-3 py-1 bg-amber-500 rounded-full text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-amber-500/20">
+                    <span className="px-3 py-1 bg-amber-500 rounded-full text-white text-[10px] font-black uppercase tracking-[0.2em] ">
                       Top Rated
                     </span>
                   )}
                 </div>
                 <h1 className="text-4xl md:text-6xl font-black text-white italic tracking-tighter uppercase">{agencyName}</h1>
                 <div className="flex flex-wrap items-center mt-4 gap-6">
-                  <div className="flex items-center px-4 py-2 bg-black/20 backdrop-blur-md rounded-xl border border-white/10">
+                  <div className="flex items-center px-4 py-2 bg-black/20 backdrop-blur-md rounded-lg border border-white/10">
                     <Star className="h-5 w-5 text-yellow-400 fill-current" />
                     <span className="ml-2 text-white font-black text-xl">{agency.rating}</span>
                     <span className="ml-2 text-white/60 font-medium tracking-tight">({agency.reviewCount} reviews)</span>
@@ -891,7 +1046,7 @@ export default function AgencyDetailPage() {
                   const schedule = document.getElementById('daily-schedule');
                   schedule?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="px-10 py-5 bg-white dark:bg-cyan-500 text-slate-900 dark:text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:brightness-110 shadow-[0_20px_50px_rgba(8,_112,_184,_0.2)] active:scale-95 transition-all text-center"
+                className="px-10 py-5 bg-white dark:bg-cyan-500 text-slate-900 dark:text-white font-black uppercase text-xs tracking-[0.2em] rounded-lg hover:brightness-110 shadow-[0_20px_50px_rgba(8,_112,_184,_0.2)] active:scale-95 transition-all text-center"
               >
                 Plan a trip
               </button>
@@ -906,7 +1061,7 @@ export default function AgencyDetailPage() {
           {/* Colonne gauche */}
           <div className="lg:col-span-2 space-y-12">
             {/* Description */}
-            <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-xl p-10 border border-gray-100 dark:border-slate-800 relative overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl p-10 border border-gray-100 dark:border-slate-800 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-5">
                 <Building className="w-32 h-32 text-cyan-500" />
               </div>
@@ -915,8 +1070,8 @@ export default function AgencyDetailPage() {
               <p className="text-gray-600 dark:text-slate-400 mb-10 leading-relaxed text-lg font-medium">{agency.description}</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="group flex items-center p-6 bg-gray-50 dark:bg-slate-800/50 rounded-[2rem] border border-gray-100 dark:border-slate-700 hover:border-cyan-500 transition-all duration-300">
-                  <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-700 flex items-center justify-center mr-6 shadow-sm group-hover:scale-110 transition-transform">
+                <div className="group flex items-center p-6 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-100 dark:border-slate-700 hover:border-cyan-500 transition-all duration-300">
+                  <div className="w-14 h-14 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center mr-6  group-hover:scale-110 transition-transform">
                     <Phone className="h-6 w-6 text-cyan-500" />
                   </div>
                   <div>
@@ -924,8 +1079,8 @@ export default function AgencyDetailPage() {
                     <div className="font-black text-gray-900 dark:text-white italic tracking-tight text-xl">{agency.phoneNumber}</div>
                   </div>
                 </div>
-                <div className="group flex items-center p-6 bg-gray-50 dark:bg-slate-800/50 rounded-[2rem] border border-gray-100 dark:border-slate-700 hover:border-cyan-500 transition-all duration-300">
-                  <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-700 flex items-center justify-center mr-6 shadow-sm group-hover:scale-110 transition-transform">
+                <div className="group flex items-center p-6 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-100 dark:border-slate-700 hover:border-cyan-500 transition-all duration-300">
+                  <div className="w-14 h-14 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center mr-6  group-hover:scale-110 transition-transform">
                     <MapPin className="h-6 w-6 text-cyan-500" />
                   </div>
                   <div>
@@ -937,7 +1092,7 @@ export default function AgencyDetailPage() {
             </div>
 
             {/* Routes avec 3 types de prix */}
-            <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-xl p-10 border border-gray-100 dark:border-slate-800">
+            <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl p-10 border border-gray-100 dark:border-slate-800">
               <div className="mb-10 text-center md:text-left">
                 <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-4 italic">Flexible Pricing</h2>
                 <h3 className="text-3xl font-black text-gray-900 dark:text-white italic tracking-tight uppercase">Routes and Travel Classes</h3>
@@ -964,7 +1119,7 @@ export default function AgencyDetailPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Standard */}
-                      <div className="relative bg-gray-50 dark:bg-slate-800/40 rounded-[2rem] p-8 border border-gray-100 dark:border-slate-800 hover:border-blue-500/50 transition-all duration-300">
+                      <div className="relative bg-gray-50 dark:bg-slate-800/40 rounded-lg p-8 border border-gray-100 dark:border-slate-800 hover:border-blue-500/50 transition-all duration-300">
                         <div className="flex justify-between items-start mb-6">
                           <div className="text-2xl font-black text-blue-600 dark:text-blue-400 italic tracking-tighter">STANDARD</div>
                         </div>
@@ -981,13 +1136,13 @@ export default function AgencyDetailPage() {
                             WiFi Included
                           </li>
                         </ul>
-                        <button className="w-full py-4 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 dark:hover:bg-slate-600 transition-all active:scale-95">
+                        <button className="w-full py-4 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-600 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 dark:hover:bg-slate-600 transition-all active:scale-95">
                           SELECT
                         </button>
                       </div>
 
                       {/* VIP */}
-                      <div className="relative bg-purple-500/5 dark:bg-purple-500/10 rounded-[2rem] p-8 border-2 border-purple-200 dark:border-purple-500/30 shadow-xl shadow-purple-500/5 hover:border-purple-500 transition-all duration-300">
+                      <div className="relative bg-purple-500/5 dark:bg-purple-500/10 rounded-lg p-8 border-2 border-purple-200 dark:border-purple-500/30 shadow-xl shadow-purple-500/5 hover:border-purple-500 transition-all duration-300">
                         <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-purple-600 text-white text-[8px] font-black uppercase tracking-[0.3em] rounded-full shadow-lg">
                           RECOMMENDED
                         </div>
@@ -1007,13 +1162,13 @@ export default function AgencyDetailPage() {
                             WiFi + USB
                           </li>
                         </ul>
-                        <button className="w-full py-4 bg-purple-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all active:scale-95 shadow-lg shadow-purple-500/20">
+                        <button className="w-full py-4 bg-purple-600 text-white rounded-lg font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all active:scale-95 ">
                           SELECT
                         </button>
                       </div>
 
                       {/* Premium */}
-                      <div className="relative bg-amber-500/5 dark:bg-amber-500/10 rounded-[2rem] p-8 border border-amber-200 dark:border-amber-800/50 hover:border-amber-500 transition-all duration-300">
+                      <div className="relative bg-amber-500/5 dark:bg-amber-500/10 rounded-lg p-8 border border-amber-200 dark:border-amber-800/50 hover:border-amber-500 transition-all duration-300">
                         <div className="flex justify-between items-start mb-6 text-amber-600 dark:text-amber-400">
                           <div className="text-2xl font-black italic tracking-tighter">PREMIUM LUXURY</div>
                         </div>
@@ -1030,7 +1185,7 @@ export default function AgencyDetailPage() {
                             Full Meal
                           </li>
                         </ul>
-                        <button className="w-full py-4 bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-50 dark:hover:bg-slate-600 transition-all active:scale-95">
+                        <button className="w-full py-4 bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-slate-600 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-amber-50 dark:hover:bg-slate-600 transition-all active:scale-95">
                           SELECT
                         </button>
                       </div>
@@ -1044,7 +1199,7 @@ export default function AgencyDetailPage() {
           {/* Colonne droite */}
           <div className="space-y-12">
             {/* Horaires du jour */}
-            <div id="daily-schedule" className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-xl p-8 border border-gray-100 dark:border-slate-800 scroll-mt-32">
+            <div id="daily-schedule" className="bg-white dark:bg-slate-900 rounded-lg shadow-xl p-8 border border-gray-100 dark:border-slate-800 scroll-mt-32">
               <h2 className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-[0.3em] mb-6 italic">Daily Departures</h2>
               <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase italic tracking-tighter mb-8 flex items-center">
                 <Calendar className="h-5 w-5 mr-3 text-cyan-500" />
@@ -1056,7 +1211,7 @@ export default function AgencyDetailPage() {
                   <button
                     key={index}
                     onClick={() => handleTripClick(trip)}
-                    className="group w-full flex justify-between items-center p-6 bg-gray-50 dark:bg-slate-800/30 border border-gray-100 dark:border-slate-800 rounded-[2rem] hover:border-cyan-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300 text-left"
+                    className="group w-full flex justify-between items-center p-6 bg-gray-50 dark:bg-slate-800/30 border border-gray-100 dark:border-slate-800 rounded-lg hover:border-cyan-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300 text-left"
                   >
                     <div>
                       <div className="font-black text-2xl text-gray-900 dark:text-white italic tracking-tighter">{trip.time}</div>
@@ -1073,14 +1228,14 @@ export default function AgencyDetailPage() {
               </div>
               <button
                 onClick={() => setShowFullSchedule(true)}
-                className="w-full mt-8 px-6 py-4 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:brightness-110 transition-all active:scale-95 shadow-xl shadow-black/10"
+                className="w-full mt-8 px-6 py-4 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:brightness-110 transition-all active:scale-95 "
               >
                 Full Schedule
               </button>
             </div>
 
             {/* Statistiques */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 rounded-[3rem] shadow-2xl p-10 text-white overflow-hidden group">
+            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl shadow-2xl p-10 text-white overflow-hidden group">
               <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:bg-cyan-500/20 transition-all duration-1000" />
 
               <h2 className="relative z-10 text-[10px] font-black text-cyan-400 uppercase tracking-[0.3em] mb-10 italic">Performance</h2>
