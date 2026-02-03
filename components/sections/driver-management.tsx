@@ -43,6 +43,7 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
     description: "",
     photo: null as File | null,
   })
+  const [isPhoneFocused, setIsPhoneFocused] = useState(false)
 
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null)
 
@@ -217,16 +218,26 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 relative group">
                 <Label htmlFor="phone">Phone *</Label>
                 <Input
                   id="phone"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="e.g., +1234567890"
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                  onFocus={() => setIsPhoneFocused(true)}
+                  onBlur={() => setIsPhoneFocused(false)}
+                  placeholder="e.g., 681154869"
                   required
+                  pattern="\d{9}"
+                  title="Please enter exactly 9 digits"
                 />
+                {isPhoneFocused && (
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-3 rounded shadow-lg z-50 whitespace-nowrap">
+                    9 digits only (e.g., 681154869)
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="licenseNumber">License Number *</Label>

@@ -1,73 +1,78 @@
 // lib/api.ts
 import axios from 'axios';
 
+export enum Role {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+  AGENCY = 'AGENCY'
+}
+
+export enum Status {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  PENDING = 'PENDING'
+}
+
 export type Agency = {
-  id: string;
+  id: string; // UUID from backend
+  firstName: string;
+  lastName: string;
   userName: string;
-  displayName: string;
-  description: string;
+  email: string;
+  password?: string;
+  role: Role;
+  status: Status;
+  profileImageUrl: string;
+  phoneNumber: number;
   address: string;
-  phoneNumber: string;
-  rating: number;
-  reviewCount: number;
-  yearsOperating: number;
-  fleetSize: number;
-  routes: {
-    name: string;
-    standardPrice: number;
-    vipPrice: number;
-    premiumPrice: number;
-    duration: string;
-    frequency: string;
-  }[];
-  features: string[];
-  serviceHours: string;
+  licenseNumber: string;
+  bio: string;
+  displayName?: string;
+  description?: string;
+  rating?: number;
+  reviewCount?: number;
+  yearsOperating?: number;
+  fleetSize?: number;
+  routes?: any[];
+  features?: string[];
+  serviceHours?: string;
   website?: string;
-  hasOnSiteService: boolean;
-  hasOnlineAppointments: boolean;
-  type: 'Transportation service' | 'Bus company' | 'Travel agency' | 'Tour agency';
-  // NOUVEAU : Chemins vers les images
-  logo?: string; // Chemin vers le logo de l'agence
-  busPhotos?: string[]; // Chemins vers les photos de bus
+  hasOnSiteService?: boolean;
+  hasOnlineAppointments?: boolean;
+  type?: string;
+  logo?: string;
+  busPhotos?: string[];
 };
 
 // Données pour 19 agences (sans les agences françaises)
 const mockAgencies: Agency[] = [
   {
     id: '1',
+    firstName: 'Parklane',
+    lastName: 'Travels',
     userName: 'parklanetravels',
-    displayName: 'Parklane Travels',
-    description: "Service de transport fiable ouvert 24h/24. Une des agences les plus accessibles de Yaoundé.",
+    email: 'contact@parklanetravels.cm',
+    role: Role.AGENCY,
+    status: Status.ACTIVE,
+    profileImageUrl: '/images/agencies/logos/parklane-travels.png',
+    phoneNumber: 237683574765,
     address: 'Yaoundé, Cameroun',
-    phoneNumber: '237683574765',
-    rating: 4.0,
-    reviewCount: 47,
-    yearsOperating: 5,
-    fleetSize: 18,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4500, vipPrice: 6500, premiumPrice: 8500, duration: '3-4h', frequency: 'Toutes les 2h' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3500, vipPrice: 5500, premiumPrice: 7500, duration: '3h', frequency: '6 voyages/jour' },
-    ],
-    features: ['Service 24h/24', 'WiFi', 'Climatisation', 'Bagages inclus'],
-    serviceHours: '24h/24',
-    website: 'https://parklanetravels.cm',
-    hasOnSiteService: true,
-    hasOnlineAppointments: false,
-    type: 'Transportation service',
-    // CHEMIN VERS LES IMAGES (à remplacer par vos vrais chemins)
-    logo: '/images/agencies/logos/parklane-travels.png', // Votre logo
-    busPhotos: [
-      '/images/agencies/buses/bus1.jpg',
-      '/images/agencies/buses/bus2.jpg'
-    ]
+    licenseNumber: 'L-2024-001',
+    bio: "Reliable transport service open 24/7. One of the most accessible agencies in Yaoundé."
   },
   {
     id: '00000000-0000-0000-0000-000000000000',
+    firstName: 'TravYotei',
+    lastName: 'Official',
     userName: 'travyotei-official',
+    email: 'contact@travyotei.com',
+    role: Role.AGENCY,
+    status: Status.ACTIVE,
+    profileImageUrl: '/images/agencies/logos/parklane-travels.png',
+    phoneNumber: 237000000000,
     displayName: 'TravYotei Official',
     description: "Welcome to TravYotei! This is a demo agency to showcase our platform capabilities.",
     address: 'Bastis, Yaoundé',
-    phoneNumber: '237000000000',
     rating: 5.0,
     reviewCount: 999,
     yearsOperating: 1,
@@ -83,428 +88,23 @@ const mockAgencies: Agency[] = [
     hasOnlineAppointments: true,
     type: 'Transportation service',
     logo: '/images/agencies/logos/parklane-travels.png',
-    busPhotos: ['/images/agencies/buses/bus1.jpg']
+    busPhotos: ['/images/agencies/buses/bus1.jpg'],
+    licenseNumber: 'OFFICIAL-001',
+    bio: "Welcome to TravYotei! This is a demo agency to showcase our platform capabilities."
   },
   {
     id: '2',
+    firstName: 'Cerises',
+    lastName: 'Express',
     userName: 'cerisesexpressvip',
-    displayName: 'CERISES EXPRESS VIP',
-    description: "Service VIP de transport avec équipements modernes et confort supérieur. Ferme à 22h.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237655319301',
-    rating: 4.0,
-    reviewCount: 265,
-    yearsOperating: 8,
-    fleetSize: 25,
-    routes: [
-      { name: 'Yaoundé → Douala VIP', standardPrice: 7000, vipPrice: 9000, premiumPrice: 12000, duration: '3h', frequency: '5 voyages/jour' },
-      { name: 'Yaoundé → Kribi', standardPrice: 5500, vipPrice: 7500, premiumPrice: 10000, duration: '2.5h', frequency: '4 voyages/jour' },
-    ],
-    features: ['Service VIP', 'WiFi haute vitesse', 'Chargement USB', 'Repas léger'],
-    serviceHours: 'Ouvert · Ferme à 22h',
-    website: 'https://cerisesexpress.cm',
-    hasOnSiteService: true,
-    hasOnlineAppointments: false,
-    type: 'Transportation service',
-    logo: '/images/agencies/logos/cerises-express-vip.png',
-    busPhotos: ['/images/agencies/buses/bus3.jpg']
-  },
-  {
-    id: '3',
-    userName: 'unitedexpress',
-    displayName: 'United Express',
-    description: "Compagnie de bus majeure avec réseau national, offrant confort et sécurité.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237653539696',
-    rating: 3.8,
-    reviewCount: 3400,
-    yearsOperating: 12,
-    fleetSize: 42,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4200, vipPrice: 6200, premiumPrice: 8200, duration: '4h', frequency: '10 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3200, vipPrice: 5200, premiumPrice: 7200, duration: '3h', frequency: '8 voyages/jour' },
-    ],
-    features: ['Grande capacité', 'Prix économique', 'Départs fréquents', 'Service national'],
-    serviceHours: '6h-22h',
-    website: 'https://unitedexpress.cm',
-    hasOnSiteService: true,
-    hasOnlineAppointments: false,
-    type: 'Bus company',
-    logo: '/images/agencies/logos/united-express.png',
-    busPhotos: ['/images/agencies/buses/bus4.jpg']
-  },
-  {
-    id: '4',
-    userName: 'finexsvoyages',
-    displayName: 'Finexs Voyages',
-    description: "Agence réputée de Mvan offrant services sur place et transport fiable.",
-    address: 'Mvan, Yaoundé, Cameroun',
-    phoneNumber: '237696943131',
-    rating: 3.8,
-    reviewCount: 6100,
-    yearsOperating: 10,
-    fleetSize: 38,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4800, vipPrice: 6800, premiumPrice: 8800, duration: '3.5h', frequency: '8 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3800, vipPrice: 5800, premiumPrice: 7800, duration: '3h', frequency: '7 voyages/jour' },
-    ],
-    features: ['Service sur place', 'Climatisation', 'Confort moyen', 'Bagages inclus'],
-    serviceHours: '7h-20h',
-    website: 'https://finexsvoyages.cm',
-    hasOnSiteService: true,
-    hasOnlineAppointments: false,
-    type: 'Bus company',
-    logo: '/images/agencies/logos/finexs-voyages.png',
-    busPhotos: ['/images/agencies/buses/bus5.jpg']
-  },
-  {
-    id: '5',
-    userName: 'mentravel',
-    displayName: 'Men Travel',
-    description: "Agence de voyage moderne avec plus de 3 ans d'expérience, services 24h/24 et rendez-vous en ligne.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237655432100',
-    rating: 3.4,
-    reviewCount: 750,
-    yearsOperating: 4,
-    fleetSize: 22,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4600, vipPrice: 6600, premiumPrice: 8600, duration: '4h', frequency: '6 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3600, vipPrice: 5600, premiumPrice: 7600, duration: '3h', frequency: '5 voyages/jour' },
-    ],
-    features: ['Service 24h/24', 'Réservation en ligne', 'Service sur place', 'Rendez-vous en ligne'],
-    serviceHours: '24h/24',
-    website: 'https://mentravel.cm',
-    hasOnSiteService: true,
-    hasOnlineAppointments: true,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/men-travel.png',
-    busPhotos: ['/images/agencies/buses/bus6.jpg']
-  },
-  {
-    id: '6',
-    userName: 'garantiexpress',
-    displayName: 'Garanti Express',
-    description: "Agence de tourisme avec plus de 7 ans d'expérience, spécialisée dans les voyages touristiques.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237677084108',
-    rating: 3.3,
-    reviewCount: 1100,
-    yearsOperating: 8,
-    fleetSize: 28,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 5000, vipPrice: 7000, premiumPrice: 9000, duration: '3.5h', frequency: '7 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 4000, vipPrice: 6000, premiumPrice: 8000, duration: '3h', frequency: '6 voyages/jour' },
-    ],
-    features: ['Service touristique', 'Guide local', 'Expérience', 'Horaires réguliers'],
-    serviceHours: 'Ouvert · Ferme à 17h',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Tour agency',
-    logo: '/images/agencies/logos/garanti-express.png',
-    busPhotos: ['/images/agencies/buses/bus7.jpg']
-  },
-  {
-    id: '7',
-    userName: 'binamvoyages',
-    displayName: 'Binam Voyages',
-    description: "Agence familiale avec plus de 10 ans d'expérience, offrant service 24h/24.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237699655599',
-    rating: 3.1,
-    reviewCount: 406,
-    yearsOperating: 11,
-    fleetSize: 20,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4400, vipPrice: 6400, premiumPrice: 8400, duration: '4h', frequency: '5 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3400, vipPrice: 5400, premiumPrice: 7400, duration: '3h', frequency: '6 voyages/jour' },
-    ],
-    features: ['Service 24h/24', 'Expérience', 'Fiabilité', 'Prix accessible'],
-    serviceHours: '24h/24',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/binam-voyages.png',
-    busPhotos: ['/images/agencies/buses/bus8.jpg']
-  },
-  {
-    id: '8',
-    userName: 'touristiquexpressmvan',
-    displayName: 'Touristique Express Mvan',
-    description: "Agence touristique de Mvan avec plus de 3 ans d'expérience, ouverte 24h/24.",
-    address: 'Mvan, Yaoundé, Cameroun',
-    phoneNumber: '237655000111',
-    rating: 3.6,
-    reviewCount: 606,
-    yearsOperating: 4,
-    fleetSize: 24,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4700, vipPrice: 6700, premiumPrice: 8700, duration: '3.5h', frequency: '8 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3700, vipPrice: 5700, premiumPrice: 7700, duration: '3h', frequency: '7 voyages/jour' },
-    ],
-    features: ['Service 24h/24', 'Service touristique', 'Horaires flexibles', 'Accueil chaleureux'],
-    serviceHours: '24h/24',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/touristique-express-mvan.png',
-    busPhotos: ['/images/agencies/buses/bus9.jpg']
-  },
-  {
-    id: '9',
-    userName: 'generalexpressmvan',
-    displayName: 'General Express Mvan',
-    description: "Importante compagnie de bus basée à Mvan avec large réseau.",
-    address: 'Mvan, Yaoundé, Cameroun',
-    phoneNumber: '237698168050',
-    rating: 3.8,
-    reviewCount: 2800,
-    yearsOperating: 15,
-    fleetSize: 45,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4500, vipPrice: 6500, premiumPrice: 8500, duration: '3.5h', frequency: '12 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3500, vipPrice: 5500, premiumPrice: 7500, duration: '3h', frequency: '10 voyages/jour' },
-    ],
-    features: ['Grande capacité', 'Départs fréquents', 'Réseau étendu', 'Fiabilité'],
-    serviceHours: '6h-21h',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Bus company',
-    logo: '/images/agencies/logos/general-express-mvan.png',
-    busPhotos: ['/images/agencies/buses/bus10.jpg']
-  },
-  {
-    id: '10',
-    userName: 'touristiquexpresstravel',
-    displayName: 'Touristique Express Travel',
-    description: "Agence de voyage avec plus de 7 ans d'expérience, service 24h/24 et site web.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237698985555',
-    rating: 3.7,
-    reviewCount: 2400,
-    yearsOperating: 8,
-    fleetSize: 32,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4900, vipPrice: 6900, premiumPrice: 8900, duration: '3.5h', frequency: '9 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3900, vipPrice: 5900, premiumPrice: 7900, duration: '3h', frequency: '8 voyages/jour' },
-    ],
-    features: ['Service 24h/24', 'Site web', 'Service touristique', 'Confort'],
-    serviceHours: '24h/24',
-    website: 'https://touristiquexpresstravel.cm',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/touristique-express-travel.png',
-    busPhotos: ['/images/agencies/buses/bus11.jpg']
-  },
-  {
-    id: '11',
-    userName: 'chartexpressvoyages',
-    displayName: 'Charter Express Voyages',
-    description: "Agence de voyage spécialisée dans les charters, avec plus de 5 ans d'expérience.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237677393152',
-    rating: 3.3,
-    reviewCount: 64,
-    yearsOperating: 6,
-    fleetSize: 15,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 5100, vipPrice: 7100, premiumPrice: 9100, duration: '3.5h', frequency: '6 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 4100, vipPrice: 6100, premiumPrice: 8100, duration: '3h', frequency: '5 voyages/jour' },
-    ],
-    features: ['Service 24h/24', 'Charters disponibles', 'Service personnalisé', 'Flexibilité'],
-    serviceHours: '24h/24',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/charter-express.png',
-    busPhotos: ['/images/agencies/buses/bus12.jpg']
-  },
-  {
-    id: '12',
-    userName: 'generalexpresstravel',
-    displayName: 'General Express Travel',
-    description: "Agence de voyage avec plus de 7 ans d'expérience, ferme à minuit.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237655530213',
-    rating: 3.1,
-    reviewCount: 175,
-    yearsOperating: 8,
-    fleetSize: 22,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4300, vipPrice: 6300, premiumPrice: 8300, duration: '4h', frequency: '8 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3300, vipPrice: 5300, premiumPrice: 7300, duration: '3h', frequency: '7 voyages/jour' },
-    ],
-    features: ['Horaires étendus', 'Service fiable', 'Prix accessible', 'Service local'],
-    serviceHours: 'Ouvert · Ferme à minuit',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/general-express-travel.png',
-    busPhotos: ['/images/agencies/buses/bus13.jpg']
-  },
-  {
-    id: '13',
-    userName: 'moghamoexpress',
-    displayName: 'MOGHAMO EXPRESS',
-    description: "Agence de tourisme spécialisée dans les régions du Nord, service 24h/24.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237680387258',
-    rating: 3.4,
-    reviewCount: 120,
-    yearsOperating: 8,
-    fleetSize: 18,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4700, vipPrice: 6700, premiumPrice: 8700, duration: '3.5h', frequency: '7 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3700, vipPrice: 5700, premiumPrice: 7700, duration: '3h', frequency: '6 voyages/jour' },
-    ],
-    features: ['Service 24h/24', 'Régions du Nord', 'Service touristique', 'Accueil chaleureux'],
-    serviceHours: '24h/24',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Tour agency',
-    logo: '/images/agencies/logos/moghamo-express.png',
-    busPhotos: ['/images/agencies/buses/bus14.jpg']
-  },
-  {
-    id: '14',
-    userName: 'touristiquevipvoyages',
-    displayName: 'Touristique VIP Voyages',
-    description: "Compagnie de bus offrant service VIP de qualité supérieure.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237699313130',
-    rating: 4.1,
-    reviewCount: 1500,
-    yearsOperating: 10,
-    fleetSize: 28,
-    routes: [
-      { name: 'Yaoundé → Douala VIP', standardPrice: 7200, vipPrice: 9200, premiumPrice: 12500, duration: '3h', frequency: '6 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam Express', standardPrice: 4700, vipPrice: 6700, premiumPrice: 8700, duration: '2.5h', frequency: '7 voyages/jour' },
-    ],
-    features: ['Service VIP', 'Confort premium', 'WiFi haut débit', 'Snacks premium'],
-    serviceHours: '7h-20h',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Bus company',
-    logo: '/images/agencies/logos/touristique-vip.png',
-    busPhotos: ['/images/agencies/buses/bus15.jpg']
-  },
-  {
-    id: '15',
-    userName: 'bucavoyages',
-    displayName: 'Bucavoyages',
-    description: "Agence de voyage familiale avec plus de 25 ans d'expérience, service sur place.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237695463975',
-    rating: 3.0,
-    reviewCount: 6,
-    yearsOperating: 26,
-    fleetSize: 12,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4200, vipPrice: 6200, premiumPrice: 8200, duration: '4h', frequency: '5 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3200, vipPrice: 5200, premiumPrice: 7200, duration: '3h', frequency: '6 voyages/jour' },
-    ],
-    features: ['Service 24h/24', 'Service sur place', 'Expérience', 'Tradition'],
-    serviceHours: '24h/24',
-    website: 'https://bucavoyages.cm',
-    hasOnSiteService: true,
-    hasOnlineAppointments: false,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/bucavoyages.png',
-    busPhotos: ['/images/agencies/buses/bus16.jpg']
-  },
-  {
-    id: '16',
-    userName: 'bucavoyagesmvan',
-    displayName: 'Buca voyage Mvan',
-    description: "Branche Mvan de Bucavoyages avec plus de 7 ans d'expérience, ferme à 22h30.",
-    address: 'Mvan, Yaoundé, Cameroun',
-    phoneNumber: '237655432111',
-    rating: 3.7,
-    reviewCount: 2100,
-    yearsOperating: 8,
-    fleetSize: 30,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4400, vipPrice: 6400, premiumPrice: 8400, duration: '3.5h', frequency: '8 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3400, vipPrice: 5400, premiumPrice: 7400, duration: '3h', frequency: '7 voyages/jour' },
-    ],
-    features: ['Service sur place', 'Horaires étendus', 'Service Mvan', 'Accueil professionnel'],
-    serviceHours: 'Ouvert · Ferme à 22h30',
-    hasOnSiteService: true,
-    hasOnlineAppointments: false,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/buca-mvan.png',
-    busPhotos: ['/images/agencies/buses/bus17.jpg']
-  },
-  {
-    id: '17',
-    userName: 'leadervoyage',
-    displayName: 'Leader Voyage',
-    description: "Agence de voyage innovante avec plus de 5 ans d'expérience.",
-    address: 'Yaoundé, Cameroun',
-    phoneNumber: '237679106301',
-    rating: 3.4,
-    reviewCount: 242,
-    yearsOperating: 6,
-    fleetSize: 20,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4600, vipPrice: 6600, premiumPrice: 8600, duration: '4h', frequency: '6 voyages/jour' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3600, vipPrice: 5600, premiumPrice: 7600, duration: '3h', frequency: '5 voyages/jour' },
-    ],
-    features: ['Service Leader', 'Innovation', 'Confort moderne', 'Service client'],
-    serviceHours: '8h-19h',
-    hasOnSiteService: false,
-    hasOnlineAppointments: false,
-    type: 'Travel agency',
-    logo: '/images/agencies/logos/leader-voyage.png',
-    busPhotos: ['/images/agencies/buses/bus18.jpg']
-  },
-  {
-    id: '18',
-    userName: 'generalexpresstraveldouala',
-    displayName: 'General Express Travel Douala',
-    description: "Compagnie de bus basée à Douala avec réseau national.",
-    address: 'Douala, Cameroun',
-    phoneNumber: '237691630293',
-    rating: 3.7,
-    reviewCount: 2100,
-    yearsOperating: 12,
-    fleetSize: 35,
-    routes: [
-      { name: 'Douala → Yaoundé', standardPrice: 4500, vipPrice: 6500, premiumPrice: 8500, duration: '3.5h', frequency: '10 voyages/jour' },
-      { name: 'Douala → Bafoussam', standardPrice: 5500, vipPrice: 7500, premiumPrice: 9500, duration: '3h', frequency: '8 voyages/jour' },
-    ],
-    features: ['Réseau national', 'Confort', 'Fiabilité', 'Service Douala'],
-    serviceHours: '6h-22h',
-    hasOnSiteService: true,
-    hasOnlineAppointments: false,
-    type: 'Bus company',
-    logo: '/images/agencies/logos/general-express-douala.png',
-    busPhotos: ['/images/agencies/buses/bus19.jpg']
-  },
-  {
-    id: '19',
-    userName: 'transyaounde',
-    displayName: 'TransYaounde',
-    description: "Service fiable entre Yaoundé et Douala. Départs réguliers.",
-    address: 'Quartier Bastos, Yaoundé',
-    phoneNumber: '237670000001',
-    rating: 4.6,
-    reviewCount: 124,
-    yearsOperating: 8,
-    fleetSize: 18,
-    routes: [
-      { name: 'Yaoundé → Douala', standardPrice: 4500, vipPrice: 6500, premiumPrice: 8500, duration: '3-4h', frequency: 'Toutes les 2h' },
-      { name: 'Yaoundé → Bafoussam', standardPrice: 3500, vipPrice: 5500, premiumPrice: 7500, duration: '3h', frequency: '6 voyages/jour' },
-    ],
-    features: ['Wi-Fi', 'Climatisation', 'Bagages', 'Eau minérale'],
-    serviceHours: '6h-22h',
-    website: 'https://transyaounde.cm',
-    hasOnSiteService: true,
-    hasOnlineAppointments: false,
-    type: 'Transportation service',
-    logo: '/images/agencies/logos/transyaounde.png',
-    busPhotos: ['/images/agencies/buses/bus20.jpg']
+    email: 'contact@cerisesexpress.cm',
+    role: Role.AGENCY,
+    status: Status.ACTIVE,
+    profileImageUrl: '/images/agencies/logos/cerises-express-vip.png',
+    phoneNumber: 237655319301,
+    address: 'Yaoundé, Cameroon',
+    licenseNumber: 'L-2024-002',
+    bio: "VIP transport service with modern equipment and superior comfort. Closes at 10 PM."
   }
 ];
 
@@ -512,59 +112,233 @@ const mockAgencies: Agency[] = [
 const simulateNetworkDelay = () => new Promise(resolve => setTimeout(resolve, 300));
 
 export async function getAgencies(): Promise<Agency[]> {
-  console.log('📡 [MOCK API] Récupération des 19 agences...');
-  await simulateNetworkDelay();
-  return mockAgencies;
+  try {
+    console.log('📡 [API] Fetching real agencies from backend...');
+    const response = await api_auth.get('/agencies');
+    const backendAgencies = response.data;
+
+    if (Array.isArray(backendAgencies) && backendAgencies.length > 0) {
+      console.log(`✅ [API] Successfully fetched ${backendAgencies.length} agencies from backend`);
+
+      return backendAgencies.map((agency: any, index: number) => ({
+        id: agency.id || String(index + 1),
+        firstName: agency.firstName || 'Agency',
+        lastName: agency.lastName || '',
+        userName: agency.userName || agency.username || 'unknown',
+        email: agency.email || '',
+        role: (agency.role as Role) || Role.AGENCY,
+        status: (agency.status as Status) || Status.ACTIVE,
+        profileImageUrl: agency.profileImageUrl || agency.logo || `/images/agencies/logos/default.png`,
+        phoneNumber: Number(agency.phoneNumber || 0),
+        address: agency.address || 'Location information not available',
+        licenseNumber: agency.licenseNumber || '',
+        bio: agency.bio || agency.description || "Active travel agency providing quality services."
+      }));
+    }
+
+    console.warn('⚠️ [API] Backend returned empty or invalid agency list, falling back to mock data');
+    return mockAgencies;
+  } catch (error) {
+    console.error('❌ [API] Failed to fetch agencies from backend, using mock data:', error);
+    return mockAgencies;
+  }
 }
 
 export async function getAgencyById(id: string): Promise<Agency | null> {
-  console.log(`📡 [MOCK API] Récupération agence ID: ${id}`);
-  await simulateNetworkDelay();
+  try {
+    console.log(`📡 [API] Fetching agency ID: ${id} from backend...`);
 
-  const agency = mockAgencies.find(agency => agency.id === id);
+    // First try to find it in the current list if we already fetched it
+    // (Optional optimization: if we have a state manager, but here we just fetch)
 
-  if (agency) {
-    return agency;
+    try {
+      const response = await api_auth.get(`/agencies/${id}`);
+      if (response.data) {
+        const agency = response.data;
+        return {
+          id: agency.id || id,
+          firstName: agency.firstName || 'Agency',
+          lastName: agency.lastName || '',
+          userName: agency.userName || agency.username || 'unknown',
+          email: agency.email || '',
+          role: (agency.role as Role) || Role.AGENCY,
+          status: (agency.status as Status) || Status.ACTIVE,
+          profileImageUrl: agency.profileImageUrl || agency.logo || `/images/agencies/logos/default.png`,
+          phoneNumber: Number(agency.phoneNumber || 0),
+          address: agency.address || 'Location information not available',
+          licenseNumber: agency.licenseNumber || '',
+          bio: agency.bio || agency.description || "Active travel agency providing quality services."
+        };
+      }
+    } catch (e) {
+      console.warn(`⚠️ [API] Could not fetch agency ${id} individually, searching in local mock data`);
+    }
+
+    const agency = mockAgencies.find(agency => agency.id === id || agency.userName === id);
+
+    if (agency) {
+      return agency;
+    }
+
+    console.warn(`⚠️ Agency ID ${id} non trouvée`);
+    return mockAgencies[0];
+  } catch (error) {
+    console.error(`❌ [API] Error identifying agency ${id}:`, error);
+    return mockAgencies[0];
   }
-
-  console.warn(`⚠️ Agence ID ${id} non trouvée`);
-  return mockAgencies[0];
 }
 
 // Axios instance for authentication API
 const api_auth = axios.create({
-  baseURL: 'http://localhost:8181/api/v1',
+  baseURL: 'https://travyotei-backend-for-user-agency-auth-1.onrender.com/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Request interceptor: Add JWT token to all requests
+api_auth.interceptors.request.use(
+  (config) => {
+    // Get token from localStorage
+    const token = localStorage.getItem('auth_token');
+
+    //For debugging
+    console.log('🔐 Request to:', config.url, 'Token exists:', !!token);
+
+    // If token exists, add it to Authorization header
+    if (token) {
+      // Verify token format
+      if (!token.startsWith('eyJ')) {
+        console.error('❌ Invalid token format - should start with "eyJ"');
+      }
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor: Handle token expiration
+api_auth.interceptors.response.use(
+  (response) => {
+    // Optional success logging
+    if (response.config.url?.includes('/profile')) {
+      console.log('✅ Profile fetched successfully');
+    }
+    return response;
+  },
+  (error) => {
+
+    console.error('API Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+    });
+
+    // Handle 401 Unauthorized (token expired/invalid)
+    if (error.response?.status === 401) {
+      // Clear all auth-related storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_data');
+      localStorage.removeItem('user_role');
+
+      // Redirect to login page if in browser
+      if (typeof window !== 'undefined') {
+        window.location.href = '/client-join?session=expired';
+      }
+    }
+
+    // Handle 404 for profile (user not found)
+    if (error.response?.status === 404 && error.config?.url?.includes('/profile')) {
+      console.error('❌ User profile not found in database');
+      // Don't clear auth - token is valid but user doesn't exist in DB
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Helper function to extract and store auth data
+const handleAuthResponse = (response: any) => {
+  console.log('📡 [api.ts] handleAuthResponse: Received response data:', response.data);
+  const { token, role } = response.data;
+
+  if (token) {
+    console.log('💾 [api.ts] handleAuthResponse: Storing token');
+    localStorage.setItem('token', token);
+    localStorage.setItem('auth_token', token);
+  } else {
+    console.warn('⚠️ [api.ts] handleAuthResponse: NO TOKEN found in response');
+  }
+
+  if (role) {
+    console.log('💾 [api.ts] handleAuthResponse: Storing user role:', role);
+    localStorage.setItem('user_role', role);
+  } else {
+    console.warn('⚠️ [api.ts] handleAuthResponse: NO ROLE found in response');
+  }
+
+  return response.data;
+};
+
 // Login
-export const login = async (name: string, password: string) => {
+export const login = async (userName: string, password: string) => {
   try {
     const response = await api_auth.post('/auth/login', {
-      name,
+      userName,
       password,
     });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-// Client signup
-export const signup_client = async (userData: {
-  name: string;
-  email: string;
-  password: string;
-}) => {
-  try {
-    const response = await api_auth.post('/auth/client/register', userData);
-    return response.data;
-  } catch (error) {
+
+    // Store token and role
+    return handleAuthResponse(response);
+  } catch (error: any) {
+    // Provide detailed error info
+    if (error.response) {
+      console.error('Login error details:', {
+        status: error.response.status,
+        data: error.response.data,
+        url: error.config?.url,
+      });
+    }
     throw error;
   }
 };
 
-// Agency regiser
+// Client signup
+export const signup_client = async (userData: {
+  firstName: string;
+  lastName: string;
+  userName: string;
+  email: string;
+  password: string;
+  phoneNumber: number;
+  address: string;
+}) => {
+  try {
+    console.log('Sending signup data:', JSON.stringify(userData, null, 2));
+    console.log('Phone number type:', typeof userData.phoneNumber);
+
+    const response = await api_auth.post('/auth/client/register', userData);
+
+    // Store token and role from response
+    return handleAuthResponse(response);
+  } catch (error: any) {
+    console.error('Signup error details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      requestData: userData,
+    });
+    throw error;
+  }
+};
+
+// Agency register (FIXED: should be /auth/agency/register, not /auth/admin/register)
 export const signup_agency = async (userData: {
   firstName: string;
   lastName: string;
@@ -577,14 +351,16 @@ export const signup_agency = async (userData: {
 }) => {
   try {
     const response = await api_auth.post('/auth/agency/register', userData);
-    return response.data;
+
+    // Store token and role from response
+    return handleAuthResponse(response);
   } catch (error) {
     throw error;
   }
-}
+};
 
-// Client signup
-export const signup = async (userData: {
+// Admin register (if you need this separately)
+export const signup_admin = async (userData: {
   firstName: string;
   lastName: string;
   userName: string;
@@ -595,29 +371,166 @@ export const signup = async (userData: {
 }) => {
   try {
     const response = await api_auth.post('/auth/admin/register', userData);
+
+    // Store token and role from response
+    return handleAuthResponse(response);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get user profile (requires JWT token)
+export const fetchUserProfile = async () => {
+  try {
+    console.log('📡 [api.ts] fetchUserProfile: Fetching profile from /profile...');
+    const response = await api_auth.get('/profile');
+    const userData = response.data;
+    console.log('✅ [api.ts] fetchUserProfile: Profile received:', userData);
+
+    // Check for common data structure variations
+    if (userData.user && !userData.role && userData.user.role) {
+      console.log('📦 [api.ts] fetchUserProfile: Found role nested in .user property');
+      userData.role = userData.user.role;
+    }
+
+    return userData;
+  } catch (error: any) {
+    console.error('❌ [api.ts] fetchUserProfile: Error fetching profile:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+
+    if (error.response?.status === 404) {
+      throw new Error('PROFILE_ENDPOINT_NOT_FOUND');
+    } else if (error.response?.status === 401) {
+      throw new Error('SESSION_EXPPIRED');
+    }
+
+    throw error;
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (userData: Partial<{
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  address: string;
+  profileImageUrl: string;
+}>) => {
+  try {
+    const response = await api_auth.put('/auth/profile', userData);
     return response.data;
   } catch (error) {
     throw error;
   }
 };
 
-// Profile picture update
-export const updateProfileImage = async (newImageUrl: string) => {
+// Update profile image specifically
+export const updateProfileImage = async (imageUrl: string) => {
   try {
-    const token = localStorage.getItem('token');
-    const response = await api_auth.put('/user/profile/image-url',
-      { newImageUrl },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    // UPDATED: Using correct endpoint and body format from backend
+    // Endpoint: PUT /user/profile/image-url
+    // Body: { "newImageUrl": "..." }
+    const response = await api_auth.put('/user/profile/image-url', {
+      newImageUrl: imageUrl // Changed from profileImageUrl to match DTO
+    });
+    console.log('✅ Profile image updated in backend:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Update profile image error:', error);
+    // Log detailed error for debugging
+    if (error.response) {
+      console.error('Backend error status:', error.response.status);
+      console.error('Backend error data:', JSON.stringify(error.response.data, null, 2));
+    }
+    throw error;
+  }
+};
+
+// Update user bio specifically
+export const updateUserBio = async (bio: string) => {
+  try {
+    // Endpoint: PUT /user/profile/bio
+    // Body: The raw string as required by the backend @RequestBody String newBio
+    const response = await api_auth.put('/user/profile/bio', bio, {
+      headers: {
+        'Content-Type': 'text/plain'
       }
-    );
+    });
+    console.log('✅ User bio updated in backend:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Update bio error:', error);
+    if (error.response) {
+      console.error('Backend error status:', error.response.status);
+      console.error('Backend error data:', JSON.stringify(error.response.data, null, 2));
+    }
+    throw error;
+  }
+};
+
+// Validate token (optional - if you have this endpoint)
+export const validateToken = async () => {
+  try {
+    const response = await api_auth.get('/auth/validate');
     return response.data;
   } catch (error) {
     throw error;
   }
 };
+
+// Logout (optional - if you have logout endpoint)
+export const logout = async () => {
+  try {
+    // If backend has logout endpoint
+    await api_auth.post('/auth/logout'); // Still to create this endpoint
+  } catch (error) {
+    // Even if backend logout fails, we clear frontend storage
+    console.warn('Backend logout failed, clearing frontend storage');
+  } finally {
+    // Always clear frontend storage
+    localStorage.removeItem('token');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('user_role');
+  }
+};
+
+// Check authentication status
+// export const checkAuth = async () => {
+//   const token = localStorage.getItem('auth_token');
+
+//   if (!token) {
+//     return { isAuthenticated: false, user: null };
+//   }
+
+//   try {
+//     // Try to fetch profile to validate token
+//     const userProfile = await fetchUserProfile();
+//     return { isAuthenticated: true, user: userProfile };
+//   } catch (error) {
+//     // If profile endpoint not ready, check if we have stored user data
+//     if (error instanceof Error && error.message === 'PROFILE_ENDPOINT_NOT_FOUND') {
+//       const storedUser = localStorage.getItem('user_data');
+//       if (storedUser) {
+//         return { isAuthenticated: true, user: JSON.parse(storedUser) };
+//       }
+//     }
+
+//     // Token might be invalid
+//     localStorage.removeItem('auth_token');
+//     localStorage.removeItem('token');
+//     return { isAuthenticated: false, user: null };
+//   }
+// };
+
+// Export the axios instance for direct use if needed
+export { api_auth };
+
+
 //Api to get all agencies
 // uncomment when we want to switch to real API
 // const API_URL = 'http://localhost:8181/api/v1/agencies';

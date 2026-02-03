@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { FaUser, FaLock, FaFacebookF, FaGoogle, FaLinkedinIn } from 'react-icons/fa';
-import { login } from '@/lib/api';
-import { FaX, FaXTwitter } from 'react-icons/fa6';
+import { FaXTwitter } from 'react-icons/fa6';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface LoginFormProps {
   switchToSignup: () => void;
@@ -16,6 +18,9 @@ export default function LoginForm({ switchToSignup }: LoginFormProps) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const { login } = useAuth();
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -30,22 +35,21 @@ export default function LoginForm({ switchToSignup }: LoginFormProps) {
     setLoading(true);
 
     try {
-      const response = await login(formData.username, formData.password);
-      console.log('Login successful:', response);
-      // Handle successful login (redirect, store token, etc.)
-      // localStorage.setItem('token', response.token);
+      await login(formData.username, formData.password);
+      toast.success('Login successful!');
+      // Redirect is handled by AuthContext
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      console.error('Login error in agency component:', err);
+      setError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
-    
   };
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto">
       <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6 text-center">Sign In</h2>
-      
+
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
           {error}
@@ -94,24 +98,24 @@ export default function LoginForm({ switchToSignup }: LoginFormProps) {
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </div>
-      
+
 
       <p className="text-gray-600 text-center mt-6 mb-4">Or Sign In with social platforms</p>
-        {/* // Social icons: */}
-        <div className="flex justify-center space-x-4">
+      {/* // Social icons: */}
+      <div className="flex justify-center space-x-4">
         <a href="#" className="w-11 h-11 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-            <FaFacebookF className="text-lg" />
+          <FaFacebookF className="text-lg" />
         </a>
         <a href="#" className="w-11 h-11 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-            <FaXTwitter className="text-lg" />
+          <FaXTwitter className="text-lg" />
         </a>
         <a href="#" className="w-11 h-11 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-            <FaGoogle className="text-lg" />
+          <FaGoogle className="text-lg" />
         </a>
         <a href="#" className="w-11 h-11 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
-            <FaLinkedinIn className="text-lg" />
+          <FaLinkedinIn className="text-lg" />
         </a>
-        </div>
+      </div>
     </form>
   );
 }

@@ -3,14 +3,14 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { UUID } from 'crypto';
+import * as api from '@/lib/api';
 
-type UserRole = 'CLIENT' | 'AGENCY' | 'ADMIN';
+type UserRole = 'CLIENT' | 'AGENCY' | 'ADMIN' | 'ROLE_CLIENT' | 'ROLE_AGENCY' | 'ROLE_ADMIN';
 
 interface User {
-  id: UUID;
+  id: string;
   firstName: string;
-  lastName: string
+  lastName: string;
   email: string;
   userName: string;
   role: UserRole;
@@ -18,6 +18,8 @@ interface User {
   profileImageUrl?: string;
   address?: string;
   licenseNumber?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface AuthContextType {
@@ -25,8 +27,9 @@ interface AuthContextType {
   loading: boolean;
   login: (userName: string, password: string) => Promise<void>;
   signup: (userData: any) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
+  refreshProfile: () => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,12 +40,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Check for saved session on mount
+  // Refresh profile data from backend
+  const refreshProfile = async (): Promise<User> => {
+    try {
+      console.log('🔄 Refreshing user profile...');
+      const userProfile = await api.fetchUserProfile();
+      console.log('✅ Profile refreshed:', userProfile);
+
+      setUser(userProfile);
+      localStorage.setItem('user_data', JSON.stringify(userProfile));
+      return userProfile;
+    } catch (error: any) {
+      console.error('❌ Failed to refresh profile:', error);
+
+      // Check specific error types
+      if (error.message === 'SESSION_EXPIRED' || error.message === 'USER_NOT_FOUND') {
+        // Clear storage on session expiry or user not found
+        clearStorage();
+        setUser(null);
+        throw error;
+      }
+
+      // For other errors, throw but keep current user
+      throw error;
+    }
+  };
+
+  // Check authentication on mount
   useEffect(() => {
     checkAuth();
   }, []);
 
-  // Protect routes based on authentication
+  // Route protection
   useEffect(() => {
     if (!loading) {
       const publicRoutes = ['/client-join', '/agency-join', '/', '/agencies', '/agencies/00000000-0000-0000-0000-000000000000', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000000000000'];
@@ -50,10 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         pathname.startsWith('/api/') ||
         pathname.startsWith('/_next/');
 
+      console.log('🛡️ [AuthContext] Protection Check:', {
+        pathname,
+        user: user ? { userName: user.userName, role: user.role } : 'NULL',
+        loading,
+        isPublicRoute
+      });
+
+      // Check for a flag to suppress automatic redirection (e.g., during onboarding)
+      const skipRedirect = typeof window !== 'undefined' && sessionStorage.getItem('skip_auth_redirect') === 'true';
+
       if (!user && !isPublicRoute) {
-        router.push('/client-join');
-      } else if (user && (pathname === '/client-join' || pathname === '/signup')) {
-        // Redirect to appropriate dashboard based on role
+        const returnUrl = encodeURIComponent(pathname);
+        console.log('🔒 [AuthContext] Access Denied: Redirecting to login. Return URL:', returnUrl);
+        router.push(`/client-join?returnUrl=${returnUrl}`);
+      } else if (user && !skipRedirect && (pathname === '/client-join' || pathname === '/agency-join' || pathname === '/login')) {
+        console.log('✅ [AuthContext] Already Authenticated: Redirecting to dashboard...');
         redirectToDashboard(user.role);
       }
     }
@@ -61,75 +102,135 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      console.log('🔐 [AuthContext] checkAuth: Started');
       const token = localStorage.getItem('auth_token');
-      if (token) {
-        // Validate token with backend
-        const response = await fetch('/api/auth/validate', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+      const storedUser = localStorage.getItem('user_data');
 
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        } else {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_data');
+      if (!token) {
+        console.log('❌ [AuthContext] checkAuth: No token found in localStorage');
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔑 [AuthContext] checkAuth: Token found, fetching profile...');
+      try {
+        const userProfile = await api.fetchUserProfile();
+        console.log('✅ [AuthContext] checkAuth: Profile fetch SUCCESS:', userProfile);
+
+        if (!userProfile.role) {
+          console.warn('⚠️ [AuthContext] checkAuth: Profile missing "role" property. Searching localStorage...');
+          const storedRole = localStorage.getItem('user_role');
+          if (storedRole) {
+            userProfile.role = storedRole as UserRole;
+            console.log('📦 [AuthContext] checkAuth: Role recovered from localStorage:', userProfile.role);
+          }
         }
-      } else {
-        // Check for stored user data
-        const storedUser = localStorage.getItem('user_data');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+
+        setUser(userProfile);
+        localStorage.setItem('user_data', JSON.stringify(userProfile));
+      } catch (error: any) {
+        console.error('❌ [AuthContext] checkAuth: Profile fetch FAILED:', error.message);
+
+        if (error.message === 'SESSION_EXPIRED' || error.response?.status === 401) {
+          console.log('🔓 [AuthContext] checkAuth: Session expired, clearing storage');
+          clearStorage();
+          setUser(null);
+        } else if (error.message === 'USER_NOT_FOUND') {
+          console.log('🔍 [AuthContext] checkAuth: User not found, clearing storage');
+          clearStorage();
+          setUser(null);
+        } else if (storedUser) {
+          console.log('📦 [AuthContext] checkAuth: Using fallback data from localStorage');
+          const parsedUser = JSON.parse(storedUser);
+          console.log('📦 [AuthContext] checkAuth: Fallback user contents:', parsedUser);
+          setUser(parsedUser);
+        } else {
+          console.log('🚫 [AuthContext] checkAuth: No fallback data available');
+          setUser(null);
         }
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('❌ [AuthContext] checkAuth: Critical failure:', error);
+      setUser(null);
     } finally {
+      console.log('🏁 [AuthContext] checkAuth: Finished (loading=false)');
       setLoading(false);
     }
   };
 
-  const redirectToDashboard = (role: UserRole) => {
-    switch (role) {
+  const clearStorage = () => {
+    console.log('🗑️ Clearing auth storage');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_role');
+  };
+
+  const redirectToDashboard = (role: UserRole | string) => {
+    // Check for a flag to suppress automatic redirection (e.g., during onboarding)
+    const skipRedirect = typeof window !== 'undefined' && sessionStorage.getItem('skip_auth_redirect') === 'true';
+    if (skipRedirect) {
+      console.log('⏸️ [AuthContext] Redirection suppressed by skip_auth_redirect flag for role:', role);
+      return;
+    }
+
+    console.log('🚀 Redirecting to dashboard for role:', role);
+    const normalizedRole = role?.toUpperCase();
+
+    switch (normalizedRole) {
       case 'CLIENT':
+      case 'ROLE_CLIENT':
         router.push('/userDashboard');
         break;
       case 'AGENCY':
-        router.push('/agency-dashboard');
+      case 'ROLE_AGENCY':
+        router.push('/Dashboard');
         break;
       case 'ADMIN':
+      case 'ROLE_ADMIN':
         router.push('/admin-dashboard');
         break;
       default:
-        router.push('/dashboard');
+        console.warn('⚠️ Unknown role in redirectToDashboard, going home:', role);
+        router.push('/');
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (userName: string, password: string) => {
     setLoading(true);
+    console.log('🔑 Attempting login for user:', userName);
+
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      // 1. Login and get JWT token
+      const loginData = await api.login(userName, password);
+      console.log('✅ Login successful, token received');
 
-      if (!response.ok) {
-        throw new Error('Login failed');
+      // 2. Fetch profile with the new token
+      try {
+        const userProfile = await api.fetchUserProfile();
+        console.log('✅ Profile fetched after login:', userProfile);
+
+        localStorage.setItem('user_data', JSON.stringify(userProfile));
+        setUser(userProfile);
+
+        // 3. Redirect to dashboard
+        redirectToDashboard(loginData.role);
+      } catch (profileError: any) {
+        console.error('❌ Profile fetch failed after login:', profileError);
+
+        if (profileError.message === 'USER_NOT_FOUND') {
+          // User exists in token but not in DB - this shouldn't happen
+          console.error('User in token not found in database');
+          clearStorage();
+          throw new Error('Account data corrupted. Please contact support.');
+        } else {
+          // Other error
+          throw profileError;
+        }
       }
-
-      const data = await response.json();
-
-      // Store token and user data
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('user_data', JSON.stringify(data.user));
-
-      setUser(data.user);
-
-      // Redirect based on role
-      redirectToDashboard(data.user.role);
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -138,52 +239,130 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (userData: any) => {
     setLoading(true);
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
+    console.log('📝 Attempting signup for:', userData.userName);
 
-      if (!response.ok) {
-        throw new Error('Signup failed');
+    try {
+      const isAgency = userData.licenseNumber !== undefined;
+      let signupData;
+
+      // 1. Register
+      if (isAgency) {
+        signupData = await api.signup_agency(userData);
+        console.log('✅ Agency registration successful, response:', signupData);
+      } else {
+        signupData = await api.signup_client(userData);
+        console.log('✅ Client registration successful, response:', signupData);
       }
 
-      const data = await response.json();
+      // 2. Auto-login if registration didn't return a token
+      // This is necessary because some registration endpoints only return a success message
+      const hasToken = signupData && typeof signupData === 'object' && signupData.token;
 
-      // Store token and user data
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('user_data', JSON.stringify(data.user));
+      if (!hasToken) {
+        console.log('🔄 No token in registration response (type:', typeof signupData, '), performing auto-login...');
+        try {
+          const loginData = await api.login(userData.userName, userData.password);
+          console.log('✅ Auto-login after signup successful');
+          // Merge login data into signupData so role and token are available for the rest of the flow
+          signupData = { ...(typeof signupData === 'object' ? signupData : { message: signupData }), ...loginData };
+        } catch (loginError) {
+          console.error('❌ Auto-login after signup failed:', loginError);
+          throw loginError;
+        }
+      }
 
-      setUser(data.user);
+      // 2. Fetch actual profile from backend (now includes ID and all data)
+      try {
+        const userProfile = await api.fetchUserProfile();
+        console.log('✅ Profile fetched after signup:', userProfile);
 
-      // Redirect based on role
-      redirectToDashboard(data.user.role);
+        localStorage.setItem('user_data', JSON.stringify(userProfile));
+        setUser(userProfile);
+      } catch (profileError: any) {
+        console.error('❌ Profile fetch failed after signup:', profileError);
+
+        // Create user object from form data as fallback
+        const initialUser: User = {
+          id: '', // Will be empty until profile is fetched
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          userName: userData.userName,
+          role: signupData.role,
+          phoneNumber: userData.phoneNumber?.toString(),
+          address: userData.address,
+          licenseNumber: userData.licenseNumber
+        };
+
+        localStorage.setItem('user_data', JSON.stringify(initialUser));
+        setUser(initialUser);
+        console.log('📦 Using form data as fallback');
+      }
+
+      // 3. Redirect to dashboard
+      redirectToDashboard(signupData.role);
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('❌ Signup error:', error);
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_data');
-    setUser(null);
-    router.push('/login');
-  };
+  const logout = async () => {
+    console.log('👋 Logging out...');
 
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      localStorage.setItem('user_data', JSON.stringify(updatedUser));
+    // Store the current role before clearing
+    const currentRole = user?.role;
+
+    try {
+      await api.logout();
+    } catch (error) {
+      console.log('ℹ️ Backend logout not available, clearing frontend only');
+    } finally {
+      clearStorage();
+      setUser(null);
+
+      // Redirect based on previous role
+      if (currentRole === 'CLIENT') {
+        router.push('/client-join');
+      } else if (currentRole === 'AGENCY') {
+        router.push('/agency-join');
+      } else if (currentRole === 'ADMIN') {
+        router.push('/admin-join');
+      } else {
+        // Default fallback
+        router.push('/client-join');
+      }
+
+      console.log('✅ Logout complete for role:', currentRole);
     }
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    console.log('✏️ Updating user data:', userData);
+    setUser((prevUser) => {
+      if (!prevUser) {
+        console.warn('⚠️ Cannot update - no current user');
+        return null;
+      }
+      const updatedUser = { ...prevUser, ...userData };
+      localStorage.setItem('user_data', JSON.stringify(updatedUser));
+      console.log('✅ User updated');
+      return updatedUser;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      signup,
+      logout,
+      updateUser,
+      refreshProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );

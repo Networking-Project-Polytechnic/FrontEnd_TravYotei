@@ -86,17 +86,21 @@ export const getAgencyLogo = (agencyName: string): string | null => {
 
 interface AgencyLogoProps {
     agencyName: string;
+    profileImageUrl?: string;
     className?: string;
     fallbackClassName?: string;
 }
 
 export const AgencyLogo = ({
     agencyName,
+    profileImageUrl,
     className = "",
     fallbackClassName = "bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center"
 }: AgencyLogoProps) => {
     const [imageError, setImageError] = useState(false);
-    const logoPath = getAgencyLogo(agencyName);
+
+    // Prioritize profileImageUrl if provided, otherwise fallback to name-based lookup
+    const logoPath = profileImageUrl || getAgencyLogo(agencyName);
 
     if (!logoPath || imageError) {
         return (
