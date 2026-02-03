@@ -1461,12 +1461,12 @@ interface CloudinaryResponse {
 }
 
 export async function uploadToCloudinary(file: File): Promise<CloudinaryResponse> {
-  const cloudName = "dnr4lqejq"
-  const uploadPreset = "Upload-agency"
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME1
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET1
 
   const formData = new FormData()
   formData.append("file", file)
-  formData.append("upload_preset", uploadPreset)
+  formData.append("upload_preset", uploadPreset || "")
 
   const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
     method: "POST",
@@ -1483,9 +1483,9 @@ export async function uploadToCloudinary(file: File): Promise<CloudinaryResponse
 }
 
 export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
-  const cloudName = "dnr4lqejq"
-  const apiKey = "826994845279213"
-  const apiSecret = "H0PpFIJDJj7UUt8PeAcbunasNrM"
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME1
+  const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY1
+  const apiSecret = process.env.CLOUDINARY_API_SECRET1
   const timestamp = Math.round(new Date().getTime() / 1000)
 
   // Signature sequence: public_id=xxx&timestamp=xxx<api_secret>
@@ -1499,7 +1499,7 @@ export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
 
   const formData = new FormData()
   formData.append("public_id", publicId)
-  formData.append("api_key", apiKey)
+  formData.append("api_key", (apiKey as string) || "")
   formData.append("timestamp", timestamp.toString())
   formData.append("signature", signature)
 

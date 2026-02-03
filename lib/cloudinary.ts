@@ -1,7 +1,8 @@
 export const cloudinaryConfig = {
-    cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    uploadPreset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
-    apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
+  cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME1,
+  uploadPreset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET1,
+  apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY1,
+  apiSecret: process.env.CLOUDINARY_API_SECRET1,
 } as const;
 
 // Add validation
