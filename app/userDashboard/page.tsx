@@ -2,12 +2,12 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  User, 
-  Ticket, 
-  Heart, 
-  History, 
-  CreditCard, 
+import {
+  User,
+  Ticket,
+  Heart,
+  History,
+  CreditCard,
   Settings,
   MapPin,
   Users,
@@ -157,7 +157,7 @@ export default function UserDashboard() {
                 Travyotei
               </span>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <button className="relative p-2 text-gray-600 hover:text-cyan-600">
                 <Bell className="h-5 w-5" />
@@ -198,8 +198,8 @@ export default function UserDashboard() {
                   <span className="font-bold text-cyan-600">{user.travelerPoints} points</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" 
+                  <div
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full"
                     style={{ width: `${Math.min(100, (user.travelerPoints / 2000) * 100)}%` }}
                   ></div>
                 </div>
@@ -227,11 +227,10 @@ export default function UserDashboard() {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      activeTab === item.id 
-                        ? 'bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-600' 
+                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${activeTab === item.id
+                        ? 'bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-600'
                         : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center">
                       <item.icon className="h-5 w-5 mr-3" />
@@ -265,13 +264,12 @@ export default function UserDashboard() {
                   {week.map((date, dateIndex) => (
                     <div
                       key={dateIndex}
-                      className={`h-8 flex items-center justify-center rounded-lg text-sm ${
-                        date === currentDay
+                      className={`h-8 flex items-center justify-center rounded-lg text-sm ${date === currentDay
                           ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold'
                           : date < 26 && date > currentDay
-                          ? 'text-gray-900 font-medium'
-                          : 'text-gray-400'
-                      }`}
+                            ? 'text-gray-900 font-medium'
+                            : 'text-gray-400'
+                        }`}
                     >
                       {date}
                     </div>
@@ -299,10 +297,10 @@ export default function UserDashboard() {
               {/* Header with tabs */}
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                  {activeTab === 'tickets' ? 'My Tickets' : 
-                   activeTab === 'favorite' ? 'Favorite Agencies' :
-                   activeTab === 'history' ? 'Travel History' :
-                   activeTab === 'payment' ? 'Payment Methods' : 'Settings'}
+                  {activeTab === 'tickets' ? 'My Tickets' :
+                    activeTab === 'favorite' ? 'Favorite Agencies' :
+                      activeTab === 'history' ? 'Travel History' :
+                        activeTab === 'payment' ? 'Payment Methods' : 'Settings'}
                 </h2>
                 <button className="px-4 py-2 border border-cyan-500 text-cyan-600 rounded-lg hover:bg-cyan-50 text-sm font-medium">
                   View All
@@ -346,11 +344,10 @@ export default function UserDashboard() {
                           <div className="text-2xl font-bold bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent">
                             {route.price}
                           </div>
-                          <div className={`mt-2 px-3 py-1 rounded-full text-sm font-medium ${
-                            route.status === 'Confirmed' 
-                              ? 'bg-green-100 text-green-800' 
+                          <div className={`mt-2 px-3 py-1 rounded-full text-sm font-medium ${route.status === 'Confirmed'
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-yellow-100 text-yellow-800'
-                          }`}>
+                            }`}>
                             {route.status}
                           </div>
                           <button className="mt-3 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:from-cyan-600 hover:to-blue-600 text-sm">

@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { FaFacebookF, FaGoogle, FaLinkedinIn, FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
-import { signup, login } from '@/lib/api';
 import { FaXTwitter } from 'react-icons/fa6';
 import ProfilePictureModal from './ProfilePictureModal';
+import BioModal from './BioModal';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
@@ -26,8 +26,10 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showBioModal, setShowBioModal] = useState(false);
+  const [isPhoneFocused, setIsPhoneFocused] = useState(false);
   const router = useRouter();
-  const { updateUser } = useAuth();
+  const { signup, refreshProfile } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -72,24 +74,22 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         phoneNumber: convertPhoneToNumber(formData.phoneNumber),
       };
 
+      // IMPORTANT: Set this flag BEFORE calling signup to prevent immediate redirection
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('skip_auth_redirect', 'true');
+      }
+
       await signup(apiData);
       setSuccess('Registration successful! Setting up your profile...');
 
-      // Automatically login to get the token for profile picture upload
-      try {
-        const loginData = await login(formData.userName, formData.password);
-        localStorage.setItem('token', loginData.token);
-        localStorage.setItem('auth_token', loginData.token); // For context compatibility
-        updateUser(loginData.user);
-
-        // Show the profile picture modal
-        setShowProfileModal(true);
-      } catch (loginErr) {
-        console.error('Auto-login failed after signup:', loginErr);
-        setSuccess('Registration successful! Please login to continue.');
-      }
+      // Show the profile picture modal
+      setShowProfileModal(true);
 
     } catch (err: any) {
+      // Clean up the flag if signup fails
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('skip_auth_redirect');
+      }
       // Handle specific phone number conversion error
       if (err.message === 'Invalid phone number format') {
         setError('Please enter a valid phone number (digits only).');
@@ -108,11 +108,18 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     }
   };
 
-  const handleModalComplete = () => {
+  const handleProfileModalComplete = () => {
     setShowProfileModal(false);
-    router.push('/userDashboard'); // Redirect to dashboard after profile setup
+    setShowBioModal(true); // Open bio modal after profile picture
   };
 
+  const handleBioModalComplete = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('skip_auth_redirect');
+    }
+    setShowBioModal(false);
+    router.push('/userDashboard'); // Final redirect to dashboard
+  };
   // Optional: Format phone input as user types
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -231,21 +238,30 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         </div>
 
         <div className="mb-4">
-          <div className="relative">
+          <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FaPhone className="text-gray-400" />
             </div>
             <input
               type="tel"
               name="phoneNumber"
-              placeholder="Phone Number (e.g., 681154869)"
+              placeholder="Phone Number (9 digits)"
               value={formData.phoneNumber}
               onChange={handlePhoneChange}
+              onFocus={() => setIsPhoneFocused(true)}
+              onBlur={() => setIsPhoneFocused(false)}
               className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
-              pattern="\d{10,}"
-              title="Please enter at least 10 digits"
+              pattern="\d{9}"
+              title="Please enter exactly 9 digits"
+              maxLength={9}
             />
+            {isPhoneFocused && (
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-3 rounded shadow-lg z-50 whitespace-nowrap animate-in fade-in zoom-in duration-200">
+                9 digits only (e.g., 681154869)
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -297,8 +313,14 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
 
       <ProfilePictureModal
         isOpen={showProfileModal}
-        onClose={() => handleModalComplete()}
-        onComplete={() => handleModalComplete()}
+        onClose={() => handleProfileModalComplete()}
+        onComplete={() => handleProfileModalComplete()}
+      />
+
+      <BioModal
+        isOpen={showBioModal}
+        onClose={() => handleBioModalComplete()}
+        onComplete={() => handleBioModalComplete()}
       />
     </>
   );

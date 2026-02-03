@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { FaFacebookF, FaGoogle, FaLinkedinIn, FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt, FaIdCard } from 'react-icons/fa';
-import { signup_agency, login } from '@/lib/api';
 import { FaXTwitter } from 'react-icons/fa6';
 import ProfilePictureModal from '../../components/ProfilePictureModal';
+import BioModal from '../../components/BioModal';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
@@ -27,8 +27,10 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showBioModal, setShowBioModal] = useState(false);
+  const [isPhoneFocused, setIsPhoneFocused] = useState(false);
   const router = useRouter();
-  const { updateUser } = useAuth();
+  const { signup, refreshProfile } = useAuth(); // Use AuthContext methods
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -53,9 +55,17 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     return phoneNumber;
   };
 
-  const handleModalComplete = () => {
+  const handleProfileModalComplete = () => {
     setShowProfileModal(false);
-    router.push('/agency-dashboard'); // Redirect to agency dashboard after profile setup
+    setShowBioModal(true);
+  };
+
+  const handleBioModalComplete = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('skip_auth_redirect');
+    }
+    setShowBioModal(false);
+    router.push('/Dashboard'); // Final redirect to agency dashboard
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,24 +94,24 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         phoneNumber: convertPhoneToNumber(formData.phoneNumber),
       };
 
-      await signup_agency(apiData);
-      setSuccess('Registration successful! Setting up your profile...');
-
-      // Automatically login to get the token for profile picture upload
-      try {
-        const loginData = await login(formData.userName, formData.password);
-        localStorage.setItem('token', loginData.token);
-        localStorage.setItem('auth_token', loginData.token);
-        updateUser(loginData.user);
-
-        // Show the profile picture modal
-        setShowProfileModal(true);
-      } catch (loginErr) {
-        console.error('Auto-login failed after agency signup:', loginErr);
-        setSuccess('Registration successful! Please login to continue.');
+      // IMPORTANT: Set this flag BEFORE calling signup to prevent immediate redirection
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('skip_auth_redirect', 'true');
       }
 
+      // Use AuthContext signup
+      // Note: signup handles auto-login if no token is returned
+      await signup(apiData);
+      setSuccess('Registration successful! Setting up your profile...');
+
+      // Show the profile picture modal
+      setShowProfileModal(true);
+
     } catch (err: any) {
+      // Clean up the flag if signup fails
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('skip_auth_redirect');
+      }
       // Handle specific phone number conversion error
       if (err.message === 'Invalid phone number format') {
         setError('Please enter a valid phone number (digits only).');
@@ -109,8 +119,19 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         // Backend error
         setError(err.response.data.message);
       } else if (err.message) {
-        // Other errors
-        setError(err.message || 'Registration failed. Please try again.');
+        // Other errors - check for common error patterns
+        const errorMsg = err.message.toLowerCase();
+        if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+          setError('Network error. Please check your connection and try again.');
+        } else if (errorMsg.includes('400') || errorMsg.includes('bad request')) {
+          setError('Invalid form data. Please check all fields and try again.');
+        } else if (errorMsg.includes('409') || errorMsg.includes('conflict')) {
+          setError('Username or email already exists. Please use different credentials.');
+        } else if (errorMsg.includes('500') || errorMsg.includes('server')) {
+          setError('Server error. Please try again later.');
+        } else {
+          setError(err.message || 'Registration failed. Please try again.');
+        }
       } else {
         setError('Registration failed. Please try again.');
       }
@@ -120,50 +141,42 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
     }
   };
 
-  // Add input formatting for phone number (optional)
-  const formatPhoneInput = (value: string) => {
-    // Remove all non-digits
-    const digits = value.replace(/\D/g, '');
-
-    // Format as (XXX) XXX-XXXX for US numbers (adjust as needed)
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-  };
-
+  // Optional: Format phone input as user types
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/\D/g, '');
-    const formattedValue = formatPhoneInput(rawValue);
+    const value = e.target.value;
+    // Allow only digits for simplicity
+    const digitsOnly = value.replace(/\D/g, '');
 
     setFormData({
       ...formData,
-      phoneNumber: rawValue, // Store the raw digits for conversion
+      phoneNumber: digitsOnly,
     });
   };
 
+
   return (
     <>
-      <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto py-2">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4 text-center">Sign Up</h2>
+      <form onSubmit={handleSubmit} className="w-full mb-7 max-w-md mx-auto">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6 text-center">Sign Up</h2>
 
         {error && (
-          <div className="mb-3 p-2 bg-red-100 text-red-700 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-3 p-2 bg-green-100 text-green-700 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">
             {success}
           </div>
         )}
 
-        {/* First & Last Name - Compact */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        {/* First & Last Name */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaUser className="text-gray-400 text-sm" />
+                <FaUser className="text-gray-400" />
               </div>
               <input
                 type="text"
@@ -171,7 +184,7 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
                 placeholder="First Name"
                 value={formData.firstName}
                 onChange={handleChange}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
@@ -180,7 +193,7 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
           <div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaUser className="text-gray-400 text-sm" />
+                <FaUser className="text-gray-400" />
               </div>
               <input
                 type="text"
@@ -188,7 +201,7 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
                 placeholder="Last Name"
                 value={formData.lastName}
                 onChange={handleChange}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
@@ -196,10 +209,10 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         </div>
 
         {/* Username */}
-        <div className="mb-3">
+        <div className="mb-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaUser className="text-gray-400 text-sm" />
+              <FaUser className="text-gray-400" />
             </div>
             <input
               type="text"
@@ -207,17 +220,17 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
               placeholder="Username"
               value={formData.userName}
               onChange={handleChange}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
         </div>
 
         {/* Email */}
-        <div className="mb-3">
+        <div className="mb-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaEnvelope className="text-gray-400 text-sm" />
+              <FaEnvelope className="text-gray-400" />
             </div>
             <input
               type="email"
@@ -225,25 +238,25 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
               placeholder="Email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
         </div>
 
         {/* Password */}
-        <div className="mb-3">
+        <div className="mb-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaLock className="text-gray-400 text-sm" />
+              <FaLock className="text-gray-400" />
             </div>
             <input
               type="password"
               name="password"
-              placeholder="Password"
+              placeholder="Password (min 6 characters)"
               value={formData.password}
               onChange={handleChange}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               minLength={6}
             />
@@ -251,59 +264,69 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         </div>
 
         {/* Phone Number */}
-        <div className="mb-3">
-          <div className="relative">
+        <div className="mb-4">
+          <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaPhone className="text-gray-400 text-sm" />
+              <FaPhone className="text-gray-400" />
             </div>
             <input
               type="tel"
               name="phoneNumber"
-              placeholder="Phone Number (e.g., 681154869)"
+              placeholder="Phone Number (9 digits)"
               value={formData.phoneNumber}
               onChange={handlePhoneChange}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onFocus={() => setIsPhoneFocused(true)}
+              onBlur={() => setIsPhoneFocused(false)}
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
-              pattern="\d{10,}"
-              title="Please enter at least 10 digits"
+              pattern="\d{9}"
+              title="Please enter exactly 9 digits"
+              maxLength={9}
             />
+            {isPhoneFocused && (
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-3 rounded shadow-lg z-50 whitespace-nowrap animate-in fade-in zoom-in duration-200">
+                9 digits only (e.g., 681154869)
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Address */}
-        <div className="mb-3">
+        <div className="mb-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaMapMarkerAlt className="text-gray-400 text-sm" />
+              <FaMapMarkerAlt className="text-gray-400" />
             </div>
             <input
               type="text"
               name="address"
-              placeholder="Address"
+              placeholder="Business Address"
               value={formData.address}
               onChange={handleChange}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
         </div>
 
         {/* License Number */}
-        <div className="mb-4">
+        <div className="mb-6">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaIdCard className="text-gray-400 text-sm" />
+              <FaIdCard className="text-gray-400" />
             </div>
             <input
               type="text"
               name="licenseNumber"
-              placeholder="License Number"
+              placeholder="Business License Number"
               value={formData.licenseNumber}
               onChange={handleChange}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
+          <p className="text-xs text-gray-500 mt-2 ml-4">Required for agency verification</p>
         </div>
 
         {/* Submit Button */}
@@ -311,26 +334,51 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
           <button
             type="submit"
             disabled={loading}
-            className="cursor-pointer w-[200px] bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold py-2 px-6 rounded-full hover:from-blue-600 hover:to-blue-700 transition duration-300 disabled:opacity-50 text-sm"
+            className="cursor-pointer w-[232px] bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold py-3 px-6 rounded-full hover:from-blue-600 hover:to-blue-700 transition duration-300 disabled:opacity-50"
           >
             {loading ? 'Registering...' : 'Sign Up'}
           </button>
         </div>
 
+        {/* Switch to login */}
+        <div className="text-center mt-4">
+          <p className="text-gray-600 text-sm">
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={switchToLogin}
+              className="text-blue-500 hover:text-blue-700 font-medium"
+            >
+              Login here
+            </button>
+          </p>
+        </div>
+
         {/* Social Signup */}
         <p className="text-gray-600 text-center text-sm mt-4 mb-3">Or Sign Up with social platforms</p>
-
         <div className="flex justify-center space-x-3 mb-2">
-          <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
+          <a
+            href="#"
+            className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition"
+          >
             <FaFacebookF className="text-xs" />
           </a>
-          <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
+          <a
+            href="#"
+            className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition"
+          >
             <FaLinkedinIn className="text-xs" />
           </a>
-          <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
+          <a
+            href="#"
+            className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition"
+          >
             <FaGoogle className="text-xs" />
           </a>
-          <a href="#" className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition">
+          <a
+            href="#"
+            className="w-8 h-8 border border-gray-400 rounded-full flex items-center justify-center hover:border-blue-500 hover:text-blue-500 transition"
+          >
             <FaXTwitter className="text-xs" />
           </a>
         </div>
@@ -338,8 +386,14 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
 
       <ProfilePictureModal
         isOpen={showProfileModal}
-        onClose={() => handleModalComplete()}
-        onComplete={() => handleModalComplete()}
+        onClose={() => handleProfileModalComplete()}
+        onComplete={() => handleProfileModalComplete()}
+      />
+
+      <BioModal
+        isOpen={showBioModal}
+        onClose={() => handleBioModalComplete()}
+        onComplete={() => handleBioModalComplete()}
       />
     </>
   );

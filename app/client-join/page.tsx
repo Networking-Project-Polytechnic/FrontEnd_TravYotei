@@ -11,7 +11,7 @@ export default function Home() {
     <div className="min-h-screen bg-white font-poppins overflow-hidden">
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
         {/* Form container - NOW WITH RELATIVE POSITIONING */}
-        <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[50px]">
+        <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[200px]">
 
           {/* Background circle - NOW ABSOLUTE AND INSIDE FORM */}
           <div className={`absolute w-[1100px] h-[1100px] rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 transition-all duration-700 ease-in-out z-0 ${isSignUpMode

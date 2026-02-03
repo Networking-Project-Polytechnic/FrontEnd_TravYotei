@@ -135,3 +135,11 @@ input:-webkit-autofill:active {
   -webkit-text-fill-color: black !important;
   transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Force Cloudinary widget to be on top */
+body iframe[id^="cloudinary-widget"], 
+.cloudinary-overlay,
+.cloudinary-modal {
+    z-index: 100000 !important;
+    pointer-events: auto !important;
+}
