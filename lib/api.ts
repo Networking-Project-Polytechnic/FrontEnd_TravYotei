@@ -62,6 +62,30 @@ const mockAgencies: Agency[] = [
     ]
   },
   {
+    id: '00000000-0000-0000-0000-000000000000',
+    userName: 'travyotei-official',
+    displayName: 'TravYotei Official',
+    description: "Welcome to TravYotei! This is a demo agency to showcase our platform capabilities.",
+    address: 'Bastis, Yaoundé',
+    phoneNumber: '237000000000',
+    rating: 5.0,
+    reviewCount: 999,
+    yearsOperating: 1,
+    fleetSize: 100,
+    routes: [
+      { name: 'Yaoundé → Douala', standardPrice: 5000, vipPrice: 8000, premiumPrice: 12000, duration: '3h 30m', frequency: 'Every hour' },
+      { name: 'Douala → Kribi', standardPrice: 4000, vipPrice: 7000, premiumPrice: 10000, duration: '2h', frequency: '4 times/day' },
+    ],
+    features: ['Service VIP', 'WiFi haute vitesse', 'Climatisation', 'Bagages inclus', 'Sécurité maximale'],
+    serviceHours: '24h/24',
+    website: 'https://travyotei.com',
+    hasOnSiteService: true,
+    hasOnlineAppointments: true,
+    type: 'Transportation service',
+    logo: '/images/agencies/logos/parklane-travels.png',
+    busPhotos: ['/images/agencies/buses/bus1.jpg']
+  },
+  {
     id: '2',
     userName: 'cerisesexpressvip',
     displayName: 'CERISES EXPRESS VIP',
@@ -659,7 +683,7 @@ export const updateTracking = async (data: any) => {
 // Creation of packages
 export const create_package = async (packageData: {}) => { }
 // API Base URL
-const API_BASE_URL = "http://localhost:8080"
+const API_BASE_URL = "https://backend-planning-travyotei-12.onrender.com"
 
 // --- TypeScript Interfaces (Matching Swagger DTOs) ---
 

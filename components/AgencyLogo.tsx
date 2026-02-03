@@ -15,6 +15,8 @@ export const AGENCY_LOGO_MAP: Record<string, string> = {
     "Men Travel Voyage": "/images/agencies/logos/logomen.jpeg",
     "Parklane Voyages": "/images/agencies/logos/logoparklane.png",
     "Touristique Voyages": "/images/agencies/logos/logotouristique.jpeg",
+    "TravYotei Official": "/images/agencies/logos/logoparklane.png",
+    "TravYotei": "/images/agencies/logos/logoparklane.png",
     "Transvoyages": "/images/agencies/logos/logotrans.png",
     "United Voyages": "/images/agencies/logos/logounited.jpeg",
 

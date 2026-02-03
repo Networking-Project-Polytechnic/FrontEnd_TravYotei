@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Protect routes based on authentication
   useEffect(() => {
     if (!loading) {
-      const publicRoutes = ['/client-join', '/agency-join', '/', '/agencies', '/agencies/1', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000000000000'];
+      const publicRoutes = ['/client-join', '/agency-join', '/', '/agencies', '/agencies/00000000-0000-0000-0000-000000000000', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000000000000'];
       const isPublicRoute = publicRoutes.includes(pathname) ||
         pathname.startsWith('/api/') ||
         pathname.startsWith('/_next/');

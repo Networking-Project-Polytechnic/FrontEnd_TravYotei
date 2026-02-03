@@ -13,7 +13,7 @@ import {
   Globe, Home, Building, Crown, Zap, Award,
   ExternalLink, Smartphone, CreditCard, LayoutGrid
 } from 'lucide-react';
-import { getAgencyById, type Agency } from '@/lib/api';
+import { getAgencyOverview, getAgencyById, getScheduleDetails, getSchedulesByDate, type Agency, type ScheduleDetails, type Schedule } from '@/lib/api';
 import { BusSeatSimulation } from '@/components/BusSeatSimulation';
 import { AgencyLogo } from '@/components/AgencyLogo';
 
@@ -316,18 +316,22 @@ const generateInitialSchedule = (agency: Agency): ScheduleDay[] => {
 
 export default function AgencyDetailPage() {
   const params = useParams();
+  // State for agency data and overview
   const [agency, setAgency] = useState<Agency | null>(null);
+  const [overview, setOverview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Modals and UI state
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [showFullSchedule, setShowFullSchedule] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [scheduleDays, setScheduleDays] = useState<ScheduleDay[]>([]);
+  const [activeImgIndex, setActiveImgIndex] = useState(0);
   const [isBookingSeat, setIsBookingSeat] = useState(false);
   const [bookedSeats, setBookedSeats] = useState<Record<string, string[]>>({}); // tripId -> seatIds
   const [tempSelectedSeat, setTempSelectedSeat] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showBookingSuccess, setShowBookingSuccess] = useState<string | null>(null); // seat number
-  const [activeImgIndex, setActiveImgIndex] = useState(0);
 
   const initialOccupiedSeatsForTrip = useMemo(() => {
     if (!selectedTrip) return [];
@@ -344,52 +348,151 @@ export default function AgencyDetailPage() {
     return seats;
   }, [selectedTrip?.id]); // On recalcule seulement si l'ID du voyage change
 
+  // Mapping Backend -> UI
+  const mapScheduleToTrip = (details: ScheduleDetails): Trip => {
+    // Map backend bus type to UI priceType
+    let pType: 'standard' | 'vip' | 'premium' = 'standard';
+    const typeLower = (details.busTypeName || '').toLowerCase();
+    if (typeLower.includes('vip')) pType = 'vip';
+    else if (typeLower.includes('premium')) pType = 'premium';
+
+    return {
+      id: details.scheduleid,
+      time: details.departuretime,
+      destination: details.endLocation?.locationname || 'Unknown',
+      availableSeats: details.bus?.totalSeats || 50,
+      price: details.price?.priceAmount || 0,
+      priceType: pType,
+      duration: details.route?.stopPoints ? `${details.route.stopPoints.length} stops` : '3-4h',
+      driver: {
+        name: details.driver?.fullName || 'TBD',
+        experience: details.driver?.description || 'Experienced Driver',
+        photo: details.driverImages?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+      },
+      bus: {
+        model: details.busModelName || details.bus?.registrationNumber || 'Modern Coach',
+        plateNumber: details.bus?.registrationNumber || 'N/A',
+        amenities: details.bus?.amenities?.map(a => a.amenityName) || ['A/C', 'Standard Seats'],
+      },
+      galleryImages: details.busImages?.length > 0
+        ? details.busImages.map(img => img.imageUrl)
+        : ['https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=1200'],
+      stops: [
+        details.startLocation?.locationname || 'Departure',
+        ...(details.route?.stopPoints || []),
+        details.endLocation?.locationname || 'Destination'
+      ]
+    };
+  };
+
   useEffect(() => {
-    const fetchAgency = async () => {
-      if (!params.id) return;
+    async function initAgency() {
+      const agencyId = Array.isArray(params.id) ? params.id[0] : params.id;
+      if (!agencyId) return;
 
       try {
-        const data = await getAgencyById(params.id as string);
-        if (data) {
-          setAgency(data);
-          setScheduleDays(generateInitialSchedule(data));
+        setLoading(true);
+        console.log(`[DEBUG] Initializing agency with ID: ${agencyId}`);
 
-          // DEBUG: Afficher le chemin de l'image
-          const assets = getAgencyAssets(data.userName);
-          console.log('DEBUG Agence:', data.userName);
-          console.log('DEBUG Logo path:', assets.logo);
-          console.log('DEBUG Bus photo path:', assets.busPhoto);
+        // 1. Fetch agency info (has mock fallback in getAgencyById)
+        let agencyData = await getAgencyById(agencyId);
+        if (!agencyData && agencyId === '00000000-0000-0000-0000-000000000000') {
+          // Double check if we can get it as the first mock if not found by ID
+          agencyData = await getAgencyById('1'); // Generic fallback
         }
-      } catch (error) {
-        console.error('Erreur:', error);
+        setAgency(agencyData);
+
+        if (agencyData) {
+          // Initialize empty schedule days for 3 days
+          const initialDays = generateInitialSchedule(agencyData);
+          setScheduleDays(initialDays);
+
+          try {
+            // 2. Try fetching real overview
+            const overviewData = await getAgencyOverview(agencyId);
+            console.log('[DEBUG] Real Agency Overview JSON:', overviewData);
+            setOverview(overviewData);
+
+            // 3. Try fetching real schedules for today
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0];
+            const daySchedules = await getSchedulesByDate(dateStr);
+            console.log(`[DEBUG] Real Schedules for ${dateStr}:`, daySchedules);
+
+            const agencySchedules = daySchedules.filter(s => s.agencyid === agencyId);
+
+            if (agencySchedules.length > 0) {
+              const fullTripDetails = await Promise.all(
+                agencySchedules.map(async (s) => {
+                  try {
+                    return await getScheduleDetails(s.scheduleid);
+                  } catch (e) {
+                    console.error(`Failed to fetch details for schedule ${s.scheduleid}`, e);
+                    return null;
+                  }
+                })
+              );
+
+              const validDetails = fullTripDetails.filter(d => d !== null);
+
+              if (validDetails.length > 0) {
+                setScheduleDays(prev => {
+                  const updated = [...prev];
+                  if (updated[0]) {
+                    updated[0].trips = validDetails.map(mapScheduleToTrip);
+                  }
+                  return updated;
+                });
+              }
+            }
+          } catch (apiErr) {
+            console.warn("API Error (Real data unavailable), staying with dummy schedules:", apiErr);
+          }
+        }
+      } catch (err) {
+        console.error("Critical failure loading agency:", err);
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchAgency();
+    }
+    initAgency();
   }, [params.id]);
 
-  const handleTripClick = (trip: Trip) => {
-    setSelectedTrip(trip);
-    setActiveImgIndex(0);
-  };
+  const handleDateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value;
+    const agencyId = Array.isArray(params.id) ? params.id[0] : params.id;
+    if (!newDate || !agencyId) return;
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const pickedDate = new Date(e.target.value);
-    if (isNaN(pickedDate.getTime()) || !agency) return;
+    try {
+      const dateObj = new Date(newDate);
+      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
-    const newDay = generateTripsForDate(agency, pickedDate);
+      const daySchedules = await getSchedulesByDate(newDate);
+      console.log(`[DEBUG] New Date Schedules for ${newDate} JSON:`, daySchedules);
 
-    // Check if day already exists
-    const existingIndex = scheduleDays.findIndex(d => d.date === newDay.date);
-    if (existingIndex !== -1) {
-      setSelectedDayIndex(existingIndex);
-    } else {
-      setScheduleDays(prev => [...prev, newDay].sort((a, b) => a.date.localeCompare(b.date)));
-      // Find new index after sort
-      const newIndex = [...scheduleDays, newDay].sort((a, b) => a.date.localeCompare(b.date)).findIndex(d => d.date === newDay.date);
-      setSelectedDayIndex(newIndex);
+      const agencySchedules = daySchedules.filter(s => s.agencyid === agencyId);
+
+      const detailedTrips = await Promise.all(
+        agencySchedules.map(async (s) => {
+          const details = await getScheduleDetails(s.scheduleid);
+          console.log(`[DEBUG] New Date Schedule Details for ${s.scheduleid} JSON:`, details);
+          return details;
+        })
+      );
+
+      const newDay: ScheduleDay = {
+        date: newDate,
+        dayName: dayName,
+        trips: detailedTrips.map(mapScheduleToTrip)
+      };
+
+      setScheduleDays(prev => {
+        const filtered = prev.filter(d => d.date !== newDate);
+        return [newDay, ...filtered].slice(0, 5);
+      });
+      setSelectedDayIndex(0);
+    } catch (err) {
+      console.error("Failed to fetch schedules for date:", err);
     }
   };
 
@@ -407,6 +510,12 @@ export default function AgencyDetailPage() {
       }
       return newList;
     });
+  };
+
+  // Fonction pour gérer le clic sur un voyage
+  const handleTripClick = (trip: Trip) => {
+    setSelectedTrip(trip);
+    setActiveImgIndex(0);
   };
 
   // Fonction pour obtenir l'icône d'un service
