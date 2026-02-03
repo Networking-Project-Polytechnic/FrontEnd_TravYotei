@@ -359,7 +359,17 @@ export const signup_agency = async (userData: {
 
     // Store token and role from response
     return handleAuthResponse(response);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ [API] Signup (Agency) error details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
+    });
     throw error;
   }
 };

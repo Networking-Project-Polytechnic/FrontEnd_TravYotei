@@ -83,7 +83,7 @@ export default function NavBar() {
                 Services
               </Link>
               <Link
-                href="/faqs"
+                href="/"
                 className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
               >
                 FAQs
