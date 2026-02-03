@@ -329,10 +329,15 @@ export const signup_client = async (userData: {
     // Store token and role from response
     return handleAuthResponse(response);
   } catch (error: any) {
-    console.error('Signup error details:', {
+    console.error('❌ [API] Signup (Client) error details:', {
       status: error.response?.status,
       data: error.response?.data,
-      requestData: userData,
+      message: error.message,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
     });
     throw error;
   }
