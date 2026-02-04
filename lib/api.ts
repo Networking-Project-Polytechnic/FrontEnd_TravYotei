@@ -114,8 +114,9 @@ const simulateNetworkDelay = () => new Promise(resolve => setTimeout(resolve, 30
 export async function getAgencies(): Promise<Agency[]> {
   try {
     console.log('📡 [API] Fetching real agencies from backend...');
-    const response = await api_auth.get('/agencies');
-    const backendAgencies = response.data;
+    const response = await fetch(`${API_BASE_URL}/api/v1/agencies`);
+    if (!response.ok) throw new Error("Failed to fetch agencies");
+    const backendAgencies = await response.json();
 
     if (Array.isArray(backendAgencies) && backendAgencies.length > 0) {
       console.log(`✅ [API] Successfully fetched ${backendAgencies.length} agencies from backend`);
@@ -249,7 +250,16 @@ api_auth.interceptors.response.use(
 
       // Redirect to login page if in browser
       if (typeof window !== 'undefined') {
-        window.location.href = '/client-join?session=expired';
+        const pathname = window.location.pathname;
+        const searchParams = new URL(window.location.href).searchParams;
+        const returnUrl = encodeURIComponent(pathname + (searchParams.toString() ? '?' + searchParams.toString() : ''));
+
+        const lowerPath = pathname.toLowerCase();
+        if (lowerPath.startsWith('/dashboard') || lowerPath.startsWith('/agency')) {
+          window.location.href = `/agency-join?session=expired&mode=signup&returnUrl=${returnUrl}`;
+        } else {
+          window.location.href = `/client-join?session=expired&mode=signup&returnUrl=${returnUrl}`;
+        }
       }
     }
 
@@ -693,6 +703,8 @@ export interface Location {
   locationid: string
   locationname: string
   agencyid: string
+  latitude?: number
+  longitude?: number
 }
 
 export interface Route {
@@ -887,6 +899,12 @@ export async function deleteLocation(id: string): Promise<boolean> {
 // --- Routes ---
 export async function getRoutes(): Promise<Route[]> {
   const response = await fetch(`${API_BASE_URL}/api/v1/routes`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function getRoutesByLocations(startId: string, endId: string): Promise<Route[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes/locations/${startId}/${endId}`)
   if (!response.ok) return []
   return response.json()
 }
@@ -1476,8 +1494,8 @@ interface CloudinaryResponse {
 }
 
 export async function uploadToCloudinary(file: File): Promise<CloudinaryResponse> {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME1
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET1
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
   const formData = new FormData()
   formData.append("file", file)
@@ -1498,9 +1516,9 @@ export async function uploadToCloudinary(file: File): Promise<CloudinaryResponse
 }
 
 export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME1
-  const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY1
-  const apiSecret = process.env.CLOUDINARY_API_SECRET1
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+  const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY
+  const apiSecret = process.env.CLOUDINARY_API_SECRET
   const timestamp = Math.round(new Date().getTime() / 1000)
 
   // Signature sequence: public_id=xxx&timestamp=xxx<api_secret>

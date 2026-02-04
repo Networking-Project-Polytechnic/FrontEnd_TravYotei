@@ -28,7 +28,24 @@ import {
   Location,
 } from "@/lib/api"
 import { CreatableSelect } from "@/components/ui/creatable-select"
+import * as turf from "@turf/turf"
 
+const fetchCoordinates = async (cityName: string) => {
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}`);
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Geocoding error:", error);
+    return null;
+  }
+};
 
 export function RouteManagement({ agencyId }: { agencyId: string }) {
   const [routes, setRoutes] = useState<Route[]>([])
@@ -110,10 +127,14 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
         return
       }
 
-      // 3. Create new
+      // 3. Create new with automatic geocoding
+      const coords = await fetchCoordinates(cityName);
+
       const newLoc = await createLocation({
         locationname: cityName,
-        agencyid: agencyId
+        agencyid: agencyId,
+        latitude: coords?.lat,
+        longitude: coords?.lng
       })
 
       // 4. Refresh and select
@@ -131,11 +152,69 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
     e.preventDefault()
 
     try {
+      const stopPointsArray = formData.stopPoints.split(",").map(p => p.trim()).filter(p => p !== "");
+
+      // --- Geospatial Validation using Nominatim-First Approach ---
+      const getCoord = async (idOrName: string, isId: boolean) => {
+        let name = isId ? locations.find(l => l.locationid === idOrName)?.locationname : idOrName;
+        if (!name) return null;
+
+        // 1. Try Nominatim first
+        const liveCoords = await fetchCoordinates(name);
+        if (liveCoords) return liveCoords;
+
+        // 2. Fallback to local database if Nominatim fails
+        const localLoc = isId
+          ? locations.find(l => l.locationid === idOrName)
+          : locations.find(l => l.locationname.toLowerCase() === idOrName.toLowerCase());
+
+        if (localLoc?.latitude && localLoc?.longitude) {
+          return { lat: localLoc.latitude, lng: localLoc.longitude };
+        }
+        return null;
+      };
+
+      const startCoord = await getCoord(formData.originCity, true);
+      const endCoord = await getCoord(formData.destinationCity, true);
+
+      if (!startCoord) {
+        alert("Validation Error: Could not find coordinates for Origin City. Please check the name or enter coordinates manually in Locations.");
+        return;
+      }
+      if (!endCoord) {
+        alert("Validation Error: Could not find coordinates for Destination City. Please check the name or enter coordinates manually in Locations.");
+        return;
+      }
+
+      const routeLine = turf.lineString([
+        [startCoord.lng, startCoord.lat],
+        [endCoord.lng, endCoord.lat]
+      ]);
+
+      for (const cityName of stopPointsArray) {
+        const stopCoord = await getCoord(cityName, false);
+        if (stopCoord) {
+          const pt = turf.point([stopCoord.lng, stopCoord.lat]);
+          const distance = turf.pointToLineDistance(pt, routeLine, { units: 'kilometers' });
+
+          // Using 15km as a reasonable tolerance
+          if (distance > 15) {
+            const originName = locations.find(l => l.locationid === formData.originCity)?.locationname || "Origin";
+            const destName = locations.find(l => l.locationid === formData.destinationCity)?.locationname || "Destination";
+            alert(`Invalid stop point: "${cityName}" is too far (${Math.round(distance)}km) from the direct path between ${originName} and ${destName}.`);
+            return;
+          }
+        } else {
+          alert(`Validation Error: Could not find coordinates for stop point "${cityName}". Please check the spelling or enter coordinates manually in Locations.`);
+          return;
+        }
+      }
+
       const payload: Partial<Route> = {
         startlocationid: formData.originCity,
         endlocationid: formData.destinationCity,
         agencyid: agencyId,
-        stopPoints: formData.stopPoints.split(",").map(p => p.trim()).filter(p => p !== ""),
+        stopPoints: stopPointsArray,
       }
 
       // Check for duplicate route (excluding current one if editing)

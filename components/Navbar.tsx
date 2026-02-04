@@ -16,6 +16,8 @@ const Navbar = () => {
       <nav className='flex items-center gap-3'>
         <Link href='/' className='text-foreground/70 font-bold hover:text-foreground transition-colors'>HOME</Link>
         <Link href='/Agencies' className='text-foreground/70 font-bold hover:text-foreground transition-colors'>AGENCIES</Link>
+        <Link href='/services' className='text-foreground/70 font-bold hover:text-foreground transition-colors'>SERVICES</Link>
+        <Link href='/contact' className='text-foreground/70 font-bold hover:text-foreground transition-colors'>CONTACT</Link>
         <Link href="/Dashboard" className='text-foreground/70 font-bold hover:text-foreground transition-colors'>DASHBOARD</Link>
         <Link href="/Tracking" className='text-foreground/70 font-bold hover:text-foreground transition-colors'>TRACKING</Link>
       </nav>
@@ -30,7 +32,7 @@ const Navbar = () => {
           className="bg-blue-600 text-white"
         />
       </div>
-    </header>
+    </header >
   )
 }
 
