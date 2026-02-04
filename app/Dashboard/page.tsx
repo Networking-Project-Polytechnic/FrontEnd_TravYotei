@@ -2,14 +2,21 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/context/AuthContext"
 
 export default function DashboardRedirect() {
   const router = useRouter()
-  const defaultAgencyId = "test-agency-id"
+  const { user, loading } = useAuth()
 
   useEffect(() => {
-    router.push(`/Dashboard/${defaultAgencyId}`)
-  }, [router])
+    if (!loading && user) {
+      router.push(`/Dashboard/${user.id}`)
+    } else if (!loading && !user) {
+      // If no user is logged in, the AuthContext should handle redirection to login,
+      // but as a fallback, we could redirect to agency-join here.
+      router.push("/agency-join?mode=signup")
+    }
+  }, [user, loading, router])
 
   return (
     <div className="flex items-center justify-center h-screen bg-background">

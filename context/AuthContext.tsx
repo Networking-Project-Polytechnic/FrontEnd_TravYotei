@@ -92,7 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!user && !isPublicRoute) {
         const returnUrl = encodeURIComponent(pathname);
         console.log('🔒 [AuthContext] Access Denied: Redirecting to login. Return URL:', returnUrl);
-        router.push(`/client-join?returnUrl=${returnUrl}`);
+
+        // Determine correct login/signup page based on the route they were trying to access
+        const lowerPath = pathname.toLowerCase();
+        if (lowerPath.startsWith('/dashboard') || lowerPath.startsWith('/agency')) {
+          router.push(`/agency-join?returnUrl=${returnUrl}&mode=signup`);
+        } else {
+          router.push(`/client-join?returnUrl=${returnUrl}&mode=signup`);
+        }
       } else if (user && !skipRedirect && (pathname === '/client-join' || pathname === '/agency-join' || pathname === '/login')) {
         console.log('✅ [AuthContext] Already Authenticated: Redirecting to dashboard...');
         redirectToDashboard(user.role);
@@ -177,6 +184,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     console.log('🚀 Redirecting to dashboard for role:', role);
     const normalizedRole = role?.toUpperCase();
+
+    // Check for returnUrl in query params
+    if (typeof window !== 'undefined') {
+      const searchParams = new URL(window.location.href).searchParams;
+      const returnUrl = searchParams.get('returnUrl');
+      if (returnUrl) {
+        console.log('🔄 Redirecting to returnUrl:', returnUrl);
+        router.push(decodeURIComponent(returnUrl));
+        return;
+      }
+    }
 
     switch (normalizedRole) {
       case 'CLIENT':
@@ -313,7 +331,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('👋 Logging out...');
 
     // Store the current role before clearing
-    const currentRole = user?.role;
+    const rawRole = user?.role;
+    const currentRole = rawRole?.toUpperCase()?.replace('ROLE_', '');
 
     try {
       await api.logout();
@@ -324,15 +343,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
 
       // Redirect based on previous role
+      // We want to go to the SIGNUP page as requested
       if (currentRole === 'CLIENT') {
-        router.push('/client-join');
+        router.push('/client-join?mode=signup');
       } else if (currentRole === 'AGENCY') {
-        router.push('/agency-join');
+        router.push('/agency-join?mode=signup');
       } else if (currentRole === 'ADMIN') {
-        router.push('/admin-join');
+        router.push('/admin-join?mode=signup');
       } else {
         // Default fallback
-        router.push('/client-join');
+        router.push('/client-join?mode=signup');
       }
 
       console.log('✅ Logout complete for role:', currentRole);

@@ -77,19 +77,19 @@ export default function NavBar() {
                 Agencies
               </Link>
               <Link
-                href="/"
+                href="/services"
                 className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
               >
                 Services
               </Link>
               <Link
-                href="/"
+                href="/contact"
                 className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
               >
                 FAQs
               </Link>
               <Link
-                href="/"
+                href="/contact"
                 className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
               >
                 Contact
@@ -104,8 +104,9 @@ export default function NavBar() {
               <Heart className="h-5 w-5" />
               <span>Saved</span>
             </button> */}
-
-            <ThemeToggle />
+            <div className="hidden md:block">
+              <ThemeToggle />
+            </div>
 
             {/* Dropdown Menu / Profile */}
             <div className="relative">
@@ -230,7 +231,8 @@ export default function NavBar() {
           <div className="flex space-x-4">
             <Link href="/" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Home</Link>
             <Link href="/agencies" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Agencies</Link>
-            <Link href="/" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Services</Link>
+            <Link href="/services" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Services</Link>
+            <Link href="/contact" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Contact</Link>
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />

@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
 import { useState } from 'react';
 import {
   Search,
@@ -59,6 +62,7 @@ const services = [
 
 
 export default function HomePage() {
+  const router = useRouter();
   const [searchParams, setSearchParams] = useState({
     departure: '',
     destination: '',
@@ -71,7 +75,14 @@ export default function HomePage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Searching packages:', searchParams);
-    // Implement search logic here
+
+    // Build query string
+    const query = new URLSearchParams();
+    if (searchParams.departure) query.set('origin', searchParams.departure);
+    if (searchParams.destination) query.set('destination', searchParams.destination);
+    if (searchParams.checkInDay) query.set('date', searchParams.checkInDay);
+
+    router.push(`/search?${query.toString()}`);
   };
 
   return (
@@ -145,12 +156,16 @@ export default function HomePage() {
               </p>
 
               <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
-                <button className="px-10 py-5 bg-gradient-to-br from-cyan-500 to-blue-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-cyan-500/20">
-                  Explore Agencies
-                </button>
-                <button className="px-10 py-5 bg-white/5 backdrop-blur-xl text-white border border-white/10 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-white/10 transition-all">
-                  Traveler Guide
-                </button>
+                <Link href="/agencies">
+                  <button className="px-10 py-5 bg-gradient-to-br from-cyan-500 to-blue-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-cyan-500/20">
+                    Explore Agencies
+                  </button>
+                </Link>
+                <Link href="/services">
+                  <button className="px-10 py-5 bg-white/5 backdrop-blur-xl text-white border border-white/10 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-white/10 transition-all">
+                    Traveler Guide
+                  </button>
+                </Link>
               </div>
             </motion.div>
 
@@ -220,7 +235,7 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Passengers</label>
                       <div className="relative group">
                         <Users className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-500 transition-colors" />
@@ -237,7 +252,7 @@ export default function HomePage() {
                           ))}
                         </select>
                       </div>
-                    </div>
+                    </div> */}
                   </div>
 
                   <button

@@ -1,11 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import LoginForm from './LoginForm';
 import SignupForm from './SignupForm';
 
-export default function Home() {
+function AuthPageContent() {
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode');
   const [isSignUpMode, setIsSignUpMode] = useState(true);
+
+  useEffect(() => {
+    if (mode === 'signup') {
+      setIsSignUpMode(true);
+    } else if (mode === 'login') {
+      setIsSignUpMode(false);
+    }
+  }, [mode]);
 
   return (
     <div className="min-h-screen bg-white font-poppins overflow-hidden">
@@ -58,7 +69,7 @@ export default function Home() {
                 </div>
                 <div className="mt-0 md:-mt-8">
                   <img
-                    src="location.svg"
+                    src="location.svg" // Note: Check if these image paths are correct relative to public/
                     alt="Location"
                     className="w-60 max-w-md mx-auto md:mr-auto z-20"
                   />
@@ -92,5 +103,13 @@ export default function Home() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthPageContent />
+    </Suspense>
   );
 }

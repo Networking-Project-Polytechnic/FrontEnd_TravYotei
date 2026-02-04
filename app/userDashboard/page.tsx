@@ -23,8 +23,10 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function UserDashboard() {
+  const { logout } = useAuth();
   const [user, setUser] = useState({
     name: "Arreyntow Kerone",
     email: "peterparker@gmail.com",
@@ -228,8 +230,8 @@ export default function UserDashboard() {
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${activeTab === item.id
-                        ? 'bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-600'
-                        : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-600'
+                      : 'text-gray-700 hover:bg-gray-50'
                       }`}
                   >
                     <div className="flex items-center">
@@ -265,10 +267,10 @@ export default function UserDashboard() {
                     <div
                       key={dateIndex}
                       className={`h-8 flex items-center justify-center rounded-lg text-sm ${date === currentDay
-                          ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold'
-                          : date < 26 && date > currentDay
-                            ? 'text-gray-900 font-medium'
-                            : 'text-gray-400'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold'
+                        : date < 26 && date > currentDay
+                          ? 'text-gray-900 font-medium'
+                          : 'text-gray-400'
                         }`}
                     >
                       {date}
@@ -345,8 +347,8 @@ export default function UserDashboard() {
                             {route.price}
                           </div>
                           <div className={`mt-2 px-3 py-1 rounded-full text-sm font-medium ${route.status === 'Confirmed'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
                             }`}>
                             {route.status}
                           </div>
@@ -518,7 +520,10 @@ export default function UserDashboard() {
 
       {/* Logout Button */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-        <button className="flex items-center justify-center w-full max-w-sm mx-auto px-6 py-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+        <button
+          onClick={logout}
+          className="flex items-center justify-center w-full max-w-sm mx-auto px-6 py-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+        >
           <LogOut className="h-5 w-5 mr-2" />
           Logout
         </button>
