@@ -1,0 +1,4 @@
+﻿app/agencies/[id]/page.tsx(602,110): error TS2551: Property 'locationName' does not exist on type 'Location'. Did you mean 'locationname'?
+app/agencies/[id]/page.tsx(611,106): error TS2551: Property 'locationName' does not exist on type 'Location'. Did you mean 'locationname'?
+app/agencies/[id]/page.tsx(665,91): error TS2551: Property 'priceamount' does not exist on type 'RoutePrice'. Did you mean 'priceAmount'?
+app/agencies/[id]/page.tsx(668,88): error TS2551: Property 'Currency' does not exist on type 'RoutePrice'. Did you mean 'currency'?
