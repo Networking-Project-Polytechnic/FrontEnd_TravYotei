@@ -29,7 +29,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
     const configs: Record<string, any> = {
         makes: {
             title: "Bus Makes",
-            fetch: () => api.getBusMakes(),
+            fetch: () => api.getBusMakesByAgency(agencyId),
             create: api.createBusMake,
             update: api.updateBusMake,
             delete: api.deleteBusMake,
@@ -39,7 +39,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
         },
         models: {
             title: "Bus Models",
-            fetch: () => api.getBusModels(),
+            fetch: () => api.getBusModelsByAgency(agencyId),
             create: api.createBusModel,
             update: api.updateBusModel,
             delete: api.deleteBusModel,
@@ -49,7 +49,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
         },
         manufacturers: {
             title: "Manufacturers",
-            fetch: () => api.getManufacturers(),
+            fetch: () => api.getManufacturersByAgency(agencyId),
             create: api.createManufacturer,
             update: api.updateManufacturer,
             delete: api.deleteManufacturer,
@@ -59,7 +59,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
         },
         fuel: {
             title: "Fuel Types",
-            fetch: () => api.getFuelTypes(),
+            fetch: () => api.getFuelTypesByAgency(agencyId),
             create: api.createFuelType,
             update: api.updateFuelType,
             delete: api.deleteFuelType,
@@ -69,7 +69,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
         },
         transmission: {
             title: "Transmission Types",
-            fetch: () => api.getTransmissionTypes(),
+            fetch: () => api.getTransmissionTypesByAgency(agencyId),
             create: api.createTransmissionType,
             update: api.updateTransmissionType,
             delete: api.deleteTransmissionType,
@@ -79,7 +79,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
         },
         types: {
             title: "Bus Types",
-            fetch: () => api.getBusTypes(),
+            fetch: () => api.getBusTypesByAgency(agencyId),
             create: api.createBusType,
             update: api.updateBusType,
             delete: api.deleteBusType,
@@ -89,7 +89,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
         },
         amenities: {
             title: "Amenities",
-            fetch: () => api.getVehicleAmenities(),
+            fetch: () => api.getVehicleAmenitiesByAgency(agencyId),
             create: api.createVehicleAmenity,
             update: api.updateVehicleAmenity,
             delete: api.deleteVehicleAmenity,
@@ -100,7 +100,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
         },
         transportables: {
             title: "Transportables",
-            fetch: () => api.getBusTransportables(),
+            fetch: () => api.getTransportablesByAgency(agencyId),
             create: api.createBusTransportable,
             update: api.updateBusTransportable,
             delete: api.deleteBusTransportable,
@@ -176,12 +176,12 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold text-foreground">Paramètres de Bus</h2>
-                    <p className="text-muted-foreground mt-2">Gérez les options de configuration des bus</p>
+                    <h2 className="text-3xl font-bold text-foreground">Bus Parameters</h2>
+                    <p className="text-muted-foreground mt-2">Manage bus configuration options</p>
                 </div>
                 <Button onClick={() => handleOpen()} className="gap-2">
                     <Plus className="w-4 h-4" />
-                    Ajouter {currentConfig.label.split(" ")[0]}
+                    Add {currentConfig.label.split(" ")[0]}
                 </Button>
             </div>
 
@@ -200,16 +200,16 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
                 <Card className="mt-6">
                     <CardHeader>
                         <CardTitle>{currentConfig.title}</CardTitle>
-                        <CardDescription>Liste de tous les {currentConfig.title.toLowerCase()} disponibles</CardDescription>
+                        <CardDescription>List of all available {currentConfig.title.toLowerCase()}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? (
-                            <p>Chargement...</p>
+                            <p>Loading...</p>
                         ) : (
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Nom</TableHead>
+                                        <TableHead>Name</TableHead>
                                         {currentConfig.hasDescription && <TableHead>Description</TableHead>}
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
@@ -241,7 +241,7 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
                                     {data.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
-                                                Aucun élément trouvé.
+                                                No elements found.
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -255,9 +255,9 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editingId ? "Modifier" : "Ajouter"} {currentConfig.label}</DialogTitle>
+                        <DialogTitle>{editingId ? "Edit" : "Add"} {currentConfig.label}</DialogTitle>
                         <DialogDescription>
-                            Veuillez saisir le nom du paramètre ci-dessous.
+                            Please enter the parameter name below.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -277,13 +277,13 @@ export function BusParameters({ agencyId }: { agencyId: string }) {
                                     id="paramDesc"
                                     value={formData.extra}
                                     onChange={(e) => setFormData({ ...formData, extra: e.target.value })}
-                                    placeholder="Entrez une description..."
+                                    placeholder="Enter a description..."
                                     rows={3}
                                 />
                             </div>
                         )}
                         <Button type="submit" className="w-full">
-                            {editingId ? "Mettre à jour" : "Créer"}
+                            {editingId ? "Update" : "Create"}
                         </Button>
                     </form>
                 </DialogContent>

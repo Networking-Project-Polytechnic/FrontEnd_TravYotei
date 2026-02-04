@@ -17,7 +17,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, MapPin } from "lucide-react"
 import {
-  getLocations,
+  getLocationsByAgency,
   createLocation,
   updateLocation,
   deleteLocation,
@@ -38,7 +38,7 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
   const fetchLocations = async () => {
     try {
       setLoading(true)
-      const data = await getLocations()
+      const data = await getLocationsByAgency(agencyId)
       setLocations(data)
       setError(null)
     } catch (err) {
