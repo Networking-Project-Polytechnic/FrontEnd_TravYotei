@@ -54,7 +54,7 @@ const mockAgencies: Agency[] = [
     email: 'contact@parklanetravels.cm',
     role: Role.AGENCY,
     status: Status.ACTIVE,
-    profileImageUrl: '/images/agencies/logos/parklane-travels.png',
+    profileImageUrl: '/images/agencies/logos/logoparklane.png',
     phoneNumber: 237683574765,
     address: 'Yaoundé, Cameroun',
     licenseNumber: 'L-2024-001',
@@ -68,7 +68,7 @@ const mockAgencies: Agency[] = [
     email: 'contact@travyotei.com',
     role: Role.AGENCY,
     status: Status.ACTIVE,
-    profileImageUrl: '/images/agencies/logos/parklane-travels.png',
+    profileImageUrl: '/images/agencies/logos/logoparklane.png',
     phoneNumber: 237000000000,
     displayName: 'TravYotei Official',
     description: "Welcome to TravYotei! This is a demo agency to showcase our platform capabilities.",
@@ -87,7 +87,7 @@ const mockAgencies: Agency[] = [
     hasOnSiteService: true,
     hasOnlineAppointments: true,
     type: 'Transportation service',
-    logo: '/images/agencies/logos/parklane-travels.png',
+    logo: '/images/agencies/logos/logoparklane.png',
     busPhotos: ['/images/agencies/buses/bus1.jpg'],
     licenseNumber: 'OFFICIAL-001',
     bio: "Welcome to TravYotei! This is a demo agency to showcase our platform capabilities."
@@ -100,7 +100,7 @@ const mockAgencies: Agency[] = [
     email: 'contact@cerisesexpress.cm',
     role: Role.AGENCY,
     status: Status.ACTIVE,
-    profileImageUrl: '/images/agencies/logos/cerises-express-vip.png',
+    profileImageUrl: '/images/agencies/logos/logocerises.jpeg',
     phoneNumber: 237655319301,
     address: 'Yaoundé, Cameroon',
     licenseNumber: 'L-2024-002',
@@ -114,9 +114,8 @@ const simulateNetworkDelay = () => new Promise(resolve => setTimeout(resolve, 30
 export async function getAgencies(): Promise<Agency[]> {
   try {
     console.log('📡 [API] Fetching real agencies from backend...');
-    const response = await fetch(`${API_BASE_URL}/api/v1/agencies`);
-    if (!response.ok) throw new Error("Failed to fetch agencies");
-    const backendAgencies = await response.json();
+    const response = await api_auth.get(`/agencies`);
+    const backendAgencies = await response.data;
 
     if (Array.isArray(backendAgencies) && backendAgencies.length > 0) {
       console.log(`✅ [API] Successfully fetched ${backendAgencies.length} agencies from backend`);
