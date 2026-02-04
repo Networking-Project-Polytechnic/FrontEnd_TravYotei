@@ -32,7 +32,7 @@ import * as turf from "@turf/turf"
 
 const fetchCoordinates = async (cityName: string) => {
   try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}`);
+    const response = await fetch(`/api/proxy/nominatim?q=${encodeURIComponent(cityName)}`);
     const data = await response.json();
     if (data && data.length > 0) {
       return {
@@ -127,14 +127,10 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
         return
       }
 
-      // 3. Create new with automatic geocoding
-      const coords = await fetchCoordinates(cityName);
-
+      // 3. Create new location (without coordinates persistence as requested)
       const newLoc = await createLocation({
         locationname: cityName,
         agencyid: agencyId,
-        latitude: coords?.lat,
-        longitude: coords?.lng
       })
 
       // 4. Refresh and select
