@@ -19,9 +19,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, User } from "lucide-react"
 import {
   getDriversByAgency,
-  createDriver,
-  updateDriver,
-  deleteDriver,
+  createDriverScoped,
+  updateDriverScoped,
+  deleteDriverScoped,
   uploadToCloudinary,
   createDriverImage,
   getPrimaryDriverImage,
@@ -114,9 +114,9 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
       // 1. Create/Update Driver (Metadata only)
       let savedDriver: Driver
       if (editingId) {
-        savedDriver = await updateDriver(editingId, payload)
+        savedDriver = await updateDriverScoped(agencyId, editingId, payload)
       } else {
-        savedDriver = await createDriver(payload)
+        savedDriver = await createDriverScoped(agencyId, payload)
       }
 
       // 2. If photo is selected, upload to Cloudinary and save metadata
@@ -161,7 +161,7 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
       }
 
       // 3. Delete from backend
-      await deleteDriver(id)
+      await deleteDriverScoped(agencyId, id)
       await fetchDrivers()
     } catch (err) {
       console.error("[DriverManagement] Error deleting driver:", err)

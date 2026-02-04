@@ -18,9 +18,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, MapPin } from "lucide-react"
 import {
   getLocationsByAgency,
-  createLocation,
-  updateLocation,
-  deleteLocation,
+  createLocationScoped,
+  updateLocationScoped,
+  deleteLocationScoped,
   Location,
 } from "@/lib/api"
 
@@ -110,7 +110,6 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
 
       const payload: Partial<Location> = {
         locationname: formData.cityName,
-        agencyid: agencyId,
         latitude: lat,
         longitude: lng,
       }
@@ -127,9 +126,9 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
       }
 
       if (editingId) {
-        await updateLocation(editingId, payload)
+        await updateLocationScoped(agencyId, editingId, payload)
       } else {
-        await createLocation(payload)
+        await createLocationScoped(agencyId, payload)
       }
 
       await fetchLocations()
@@ -145,7 +144,7 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
     if (!confirm("Are you sure you want to delete this location?")) return
 
     try {
-      await deleteLocation(id)
+      await deleteLocationScoped(agencyId, id)
       await fetchLocations()
     } catch (err) {
       console.error("[LocationManagement] Error deleting location:", err)

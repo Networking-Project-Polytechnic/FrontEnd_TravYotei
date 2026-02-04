@@ -21,9 +21,9 @@ import { Plus, Edit2, Trash2, DollarSign } from "lucide-react"
 import {
   getRoutePrices as getFares,
   getRoutePricesByAgency,
-  createRoutePrice as createFare,
-  updateRoutePrice as updateFare,
-  deleteRoutePrice as deleteFare,
+  createRoutePriceScoped as createFare,
+  updateRoutePriceScoped as updateFare,
+  deleteRoutePriceScoped as deleteFare,
   getRoutes,
   getRoutesByAgency,
   getBuses,
@@ -134,9 +134,9 @@ export function FareManagement({ agencyId }: { agencyId: string }) {
       }
 
       if (editingId) {
-        await updateFare(editingId, payload)
+        await updateFare(agencyId, editingId, payload)
       } else {
-        await createFare(payload)
+        await createFare(agencyId, payload)
       }
 
       await fetchAllData()
@@ -152,7 +152,7 @@ export function FareManagement({ agencyId }: { agencyId: string }) {
     if (!confirm("Are you sure you want to delete this fare?")) return
 
     try {
-      await deleteFare(id)
+      await deleteFare(agencyId, id)
       await fetchAllData()
     } catch (err) {
       console.error("[FareManagement] Error deleting fare:", err)

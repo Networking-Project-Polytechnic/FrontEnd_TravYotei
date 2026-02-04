@@ -23,9 +23,9 @@ import {
   getBusesByAgency,
   getBusById,
   getBusImages,
-  createBus,
-  updateBus,
-  deleteBus,
+  createBusScoped,
+  updateBusScoped,
+  deleteBusScoped,
   getBusMakes,
   getBusModels,
   getManufacturers,
@@ -312,9 +312,9 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
       // 1. Create/Update Bus (Metadata)
       let savedBus: Bus
       if (editingId) {
-        savedBus = await updateBus(editingId, payload)
+        savedBus = await updateBusScoped(agencyId, editingId, payload)
       } else {
-        savedBus = await createBus(payload)
+        savedBus = await createBusScoped(agencyId, payload)
       }
 
       // 2. Upload Images to Cloudinary
@@ -363,7 +363,7 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
       }
 
       // 3. Delete from backend
-      const success = await deleteBus(id)
+      const success = await deleteBusScoped(agencyId, id)
       if (!success) {
         throw new Error("Bus deletion failed in API (returned false)");
       }

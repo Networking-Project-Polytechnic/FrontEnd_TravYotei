@@ -1367,6 +1367,19 @@ export async function getScheduleDetails(scheduleId: string): Promise<ScheduleDe
   return response.json()
 }
 
+export async function searchGlobalSchedules(startLocationId: string, stopLocationId: string, date: string): Promise<ScheduleDetails[]> {
+  const params = new URLSearchParams({ startLocationId, stopLocationId, date })
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/search?${params.toString()}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
+export async function searchGlobalSchedulesByName(start: string, stop: string, date: string): Promise<ScheduleDetails[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/search/${start}/${stop}/${date}`)
+  if (!response.ok) return []
+  return response.json()
+}
+
 export async function getRoutePricesByAgency(agencyId: string): Promise<RoutePrice[]> {
   const response = await fetch(`${API_BASE_URL}/api/v1/route-prices/agency/${agencyId}`)
   if (!response.ok) return []
@@ -1585,6 +1598,385 @@ export async function updateAssignment(id: string, assignment: Partial<Assignmen
 
 export async function deleteAssignment(id: string): Promise<boolean> {
   const response = await fetch(`${API_BASE_URL}/api/v1/assignments/${id}`, { method: "DELETE" })
+  return response.ok
+}
+
+// --- Scoped Dashboard Operations ---
+
+export async function createBusScoped(agencyId: string, bus: Partial<Bus>): Promise<Bus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(bus),
+  })
+  if (!response.ok) throw new Error("Failed to create bus (scoped)")
+  return response.json()
+}
+
+export async function updateBusScoped(agencyId: string, busId: string, bus: Partial<Bus>): Promise<Bus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses/agency/${agencyId}/${busId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(bus),
+  })
+  if (!response.ok) throw new Error("Failed to update bus (scoped)")
+  return response.json()
+}
+
+export async function deleteBusScoped(agencyId: string, busId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/buses/agency/${agencyId}/${busId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createScheduleScoped(agencyId: string, schedule: Partial<Schedule>): Promise<Schedule> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(schedule),
+  })
+  if (!response.ok) throw new Error("Failed to create schedule (scoped)")
+  return response.json()
+}
+
+export async function updateScheduleScoped(agencyId: string, scheduleId: string, schedule: Partial<Schedule>): Promise<Schedule> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/agency/${agencyId}/${scheduleId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(schedule),
+  })
+  if (!response.ok) throw new Error("Failed to update schedule (scoped)")
+  return response.json()
+}
+
+export async function deleteScheduleScoped(agencyId: string, scheduleId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedules/agency/${agencyId}/${scheduleId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createDriverScoped(agencyId: string, driver: Partial<Driver>): Promise<Driver> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(driver),
+  })
+  if (!response.ok) throw new Error("Failed to create driver (scoped)")
+  return response.json()
+}
+
+export async function updateDriverScoped(agencyId: string, driverId: string, driver: Partial<Driver>): Promise<Driver> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers/agency/${agencyId}/${driverId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(driver),
+  })
+  if (!response.ok) throw new Error("Failed to update driver (scoped)")
+  return response.json()
+}
+
+export async function deleteDriverScoped(agencyId: string, driverId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/drivers/agency/${agencyId}/${driverId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createRouteScoped(agencyId: string, route: Partial<Route>): Promise<Route> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(route),
+  })
+  if (!response.ok) throw new Error("Failed to create route (scoped)")
+  return response.json()
+}
+
+export async function updateRouteScoped(agencyId: string, routeId: string, route: Partial<Route>): Promise<Route> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes/agency/${agencyId}/${routeId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(route),
+  })
+  if (!response.ok) throw new Error("Failed to update route (scoped)")
+  return response.json()
+}
+
+export async function deleteRouteScoped(agencyId: string, routeId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/routes/agency/${agencyId}/${routeId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createLocationScoped(agencyId: string, location: Partial<Location>): Promise<Location> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(location),
+  })
+  if (!response.ok) throw new Error("Failed to create location (scoped)")
+  return response.json()
+}
+
+export async function updateLocationScoped(agencyId: string, locationId: string, location: Partial<Location>): Promise<Location> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations/agency/${agencyId}/${locationId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(location),
+  })
+  if (!response.ok) throw new Error("Failed to update location (scoped)")
+  return response.json()
+}
+
+export async function deleteLocationScoped(agencyId: string, locationId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations/agency/${agencyId}/${locationId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createRoutePriceScoped(agencyId: string, price: Partial<RoutePrice>): Promise<RoutePrice> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/route-prices/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(price),
+  })
+  if (!response.ok) throw new Error("Failed to create route price (scoped)")
+  return response.json()
+}
+
+export async function updateRoutePriceScoped(agencyId: string, priceId: string, price: Partial<RoutePrice>): Promise<RoutePrice> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/route-prices/agency/${agencyId}/${priceId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(price),
+  })
+  if (!response.ok) throw new Error("Failed to update route price (scoped)")
+  return response.json()
+}
+
+export async function deleteRoutePriceScoped(agencyId: string, priceId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/route-prices/agency/${agencyId}/${priceId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createAssignmentScoped(agencyId: string, assignment: Partial<Assignment>): Promise<Assignment> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/assignments/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(assignment),
+  })
+  if (!response.ok) throw new Error("Failed to create assignment (scoped)")
+  return response.json()
+}
+
+export async function updateAssignmentScoped(agencyId: string, assignmentId: string, assignment: Partial<Assignment>): Promise<Assignment> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/assignments/agency/${agencyId}/${assignmentId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(assignment),
+  })
+  if (!response.ok) throw new Error("Failed to update assignment (scoped)")
+  return response.json()
+}
+
+export async function deleteAssignmentScoped(agencyId: string, assignmentId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/assignments/agency/${agencyId}/${assignmentId}`, { method: "DELETE" })
+  return response.ok
+}
+
+// Scoped Parameters CRUD
+
+export async function createBusMakeScoped(agencyId: string, make: Partial<BusMake>): Promise<BusMake> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-makes/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(make),
+  })
+  if (!response.ok) throw new Error("Failed to create bus make (scoped)")
+  return response.json()
+}
+
+export async function updateBusMakeScoped(agencyId: string, busMakeId: string, make: Partial<BusMake>): Promise<BusMake> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-makes/agency/${agencyId}/${busMakeId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(make),
+  })
+  if (!response.ok) throw new Error("Failed to update bus make (scoped)")
+  return response.json()
+}
+
+export async function deleteBusMakeScoped(agencyId: string, busMakeId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-makes/agency/${agencyId}/${busMakeId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createBusModelScoped(agencyId: string, model: Partial<BusModel>): Promise<BusModel> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-models/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(model),
+  })
+  if (!response.ok) throw new Error("Failed to create bus model (scoped)")
+  return response.json()
+}
+
+export async function updateBusModelScoped(agencyId: string, busModelId: string, model: Partial<BusModel>): Promise<BusModel> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-models/agency/${agencyId}/${busModelId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(model),
+  })
+  if (!response.ok) throw new Error("Failed to update bus model (scoped)")
+  return response.json()
+}
+
+export async function deleteBusModelScoped(agencyId: string, busModelId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-models/agency/${agencyId}/${busModelId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createManufacturerScoped(agencyId: string, manufacturer: Partial<Manufacturer>): Promise<Manufacturer> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-manufacturers/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(manufacturer),
+  })
+  if (!response.ok) throw new Error("Failed to create manufacturer (scoped)")
+  return response.json()
+}
+
+export async function updateManufacturerScoped(agencyId: string, manufacturerId: string, manufacturer: Partial<Manufacturer>): Promise<Manufacturer> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-manufacturers/agency/${agencyId}/${manufacturerId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(manufacturer),
+  })
+  if (!response.ok) throw new Error("Failed to update manufacturer (scoped)")
+  return response.json()
+}
+
+export async function deleteManufacturerScoped(agencyId: string, manufacturerId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-manufacturers/agency/${agencyId}/${manufacturerId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createFuelTypeScoped(agencyId: string, fuelType: Partial<FuelType>): Promise<FuelType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/fuel-types/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fuelType),
+  })
+  if (!response.ok) throw new Error("Failed to create fuel type (scoped)")
+  return response.json()
+}
+
+export async function updateFuelTypeScoped(agencyId: string, fuelTypeId: string, fuelType: Partial<FuelType>): Promise<FuelType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/fuel-types/agency/${agencyId}/${fuelTypeId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fuelType),
+  })
+  if (!response.ok) throw new Error("Failed to update fuel type (scoped)")
+  return response.json()
+}
+
+export async function deleteFuelTypeScoped(agencyId: string, fuelTypeId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/fuel-types/agency/${agencyId}/${fuelTypeId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createTransmissionTypeScoped(agencyId: string, transmissionType: Partial<TransmissionType>): Promise<TransmissionType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/transmission-types/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(transmissionType),
+  })
+  if (!response.ok) throw new Error("Failed to create transmission type (scoped)")
+  return response.json()
+}
+
+export async function updateTransmissionTypeScoped(agencyId: string, transmissionTypeId: string, transmissionType: Partial<TransmissionType>): Promise<TransmissionType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/transmission-types/agency/${agencyId}/${transmissionTypeId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(transmissionType),
+  })
+  if (!response.ok) throw new Error("Failed to update transmission type (scoped)")
+  return response.json()
+}
+
+export async function deleteTransmissionTypeScoped(agencyId: string, transmissionTypeId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/transmission-types/agency/${agencyId}/${transmissionTypeId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createBusTypeScoped(agencyId: string, busType: Partial<BusType>): Promise<BusType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-types/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(busType),
+  })
+  if (!response.ok) throw new Error("Failed to create bus type (scoped)")
+  return response.json()
+}
+
+export async function updateBusTypeScoped(agencyId: string, busTypeId: string, busType: Partial<BusType>): Promise<BusType> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-types/agency/${agencyId}/${busTypeId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(busType),
+  })
+  if (!response.ok) throw new Error("Failed to update bus type (scoped)")
+  return response.json()
+}
+
+export async function deleteBusTypeScoped(agencyId: string, busTypeId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/bus-types/agency/${agencyId}/${busTypeId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createVehicleAmenityScoped(agencyId: string, amenity: Partial<BusAmenity>): Promise<BusAmenity> {
+  const response = await fetch(`${API_BASE_URL}/api/vehicle-amenities/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(amenity),
+  })
+  if (!response.ok) throw new Error("Failed to create amenity (scoped)")
+  return response.json()
+}
+
+export async function updateVehicleAmenityScoped(agencyId: string, amenityId: string, amenity: Partial<BusAmenity>): Promise<BusAmenity> {
+  const response = await fetch(`${API_BASE_URL}/api/vehicle-amenities/agency/${agencyId}/${amenityId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(amenity),
+  })
+  if (!response.ok) throw new Error("Failed to update amenity (scoped)")
+  return response.json()
+}
+
+export async function deleteVehicleAmenityScoped(agencyId: string, amenityId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/vehicle-amenities/agency/${agencyId}/${amenityId}`, { method: "DELETE" })
+  return response.ok
+}
+
+export async function createBusTransportableScoped(agencyId: string, transportable: Partial<BusCanTransport>): Promise<BusCanTransport> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-transportables/agency/${agencyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(transportable),
+  })
+  if (!response.ok) throw new Error("Failed to create transportable (scoped)")
+  return response.json()
+}
+
+export async function updateBusTransportableScoped(agencyId: string, transportId: string, transportable: Partial<BusCanTransport>): Promise<BusCanTransport> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-transportables/agency/${agencyId}/${transportId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(transportable),
+  })
+  if (!response.ok) throw new Error("Failed to update transportable (scoped)")
+  return response.json()
+}
+
+export async function deleteBusTransportableScoped(agencyId: string, transportId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/bus-transportables/agency/${agencyId}/${transportId}`, { method: "DELETE" })
   return response.ok
 }
 

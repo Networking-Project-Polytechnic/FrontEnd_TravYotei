@@ -20,10 +20,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, Clock, LayoutGrid } from "lucide-react"
 import {
   getSchedulesByAgency,
-  createSchedule,
-  createAssignment,
-  updateSchedule,
-  deleteSchedule,
+  createScheduleScoped,
+  createAssignmentScoped,
+  updateScheduleScoped,
+  deleteScheduleScoped,
   getRoutes,
   getBuses,
   Schedule,
@@ -213,17 +213,16 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
       }
 
       if (editingId) {
-        await updateSchedule(editingId, payload)
+        await updateScheduleScoped(agencyId, editingId, payload)
       } else {
-        const newSchedule = await createSchedule(payload)
+        const newSchedule = await createScheduleScoped(agencyId, payload)
 
         // Auto-create assignment if driver is selected
         if (formData.driverId && newSchedule && newSchedule.scheduleid) {
           try {
-            await createAssignment({
+            await createAssignmentScoped(agencyId, {
               scheduleId: newSchedule.scheduleid,
               driverId: formData.driverId,
-              agencyId: agencyId,
               assignmentDate: newSchedule.date
             } as any);
           } catch (assignErr) {
@@ -246,7 +245,7 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
     if (!confirm("Are you sure you want to delete this trip?")) return
 
     try {
-      await deleteSchedule(id)
+      await deleteScheduleScoped(agencyId, id)
       await fetchAllData()
     } catch (err) {
       console.error("[TripManagement] Error deleting trip:", err)

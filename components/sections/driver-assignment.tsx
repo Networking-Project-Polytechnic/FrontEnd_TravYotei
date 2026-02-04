@@ -19,8 +19,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, UserCheck, Trash2 } from "lucide-react"
 import {
   getAssignmentsByAgency,
-  createAssignment,
-  deleteAssignment,
+  createAssignmentScoped,
+  deleteAssignmentScoped,
   getSchedulesByAgency,
   Schedule,
   getBuses,
@@ -151,11 +151,10 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
         // scheduleId: ... missing
       }
 
-      await createAssignment({
-        agencyId,
+      await createAssignmentScoped(agencyId, {
         driverId: formData.driverId,
         scheduleId: formData.scheduleId,
-        assignmentDate: formData.assignedFrom // Add assignmentDate if accepted by API, otherwise ignore (DTO says assignmentDate exists)
+        assignmentDate: formData.assignedFrom
       } as any)
 
       await fetchAllData()
@@ -171,7 +170,7 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
     if (!confirm("Are you sure you want to end this assignment?")) return
 
     try {
-      await deleteAssignment(id)
+      await deleteAssignmentScoped(agencyId, id)
       // if (!response.ok) throw new Error("Failed to end assignment") // deleteAssignment throws if fails or returns bool
       // Assuming deleteAssignment returns void or bool. api.ts implementation of delete usually is void or boolean.
       // Checking api.ts implementation of deleteAssignment:

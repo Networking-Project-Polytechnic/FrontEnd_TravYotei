@@ -18,11 +18,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, MapPin } from "lucide-react"
 import {
   getRoutesByAgency,
-  createRoute,
-  updateRoute,
-  deleteRoute,
+  createRouteScoped,
+  updateRouteScoped,
+  deleteRouteScoped,
   getLocations,
-  createLocation,
+  createLocationScoped,
   getLocationByName,
   Route,
   Location,
@@ -130,9 +130,8 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
       // 3. Create new with automatic geocoding
       const coords = await fetchCoordinates(cityName);
 
-      const newLoc = await createLocation({
+      const newLoc = await createLocationScoped(agencyId, {
         locationname: cityName,
-        agencyid: agencyId,
         latitude: coords?.lat,
         longitude: coords?.lng
       })
@@ -230,9 +229,9 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
       }
 
       if (editingId) {
-        await updateRoute(editingId, payload)
+        await updateRouteScoped(agencyId, editingId, payload)
       } else {
-        await createRoute(payload)
+        await createRouteScoped(agencyId, payload)
       }
 
       await fetchAllData()
@@ -253,7 +252,7 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
     if (!confirm("Are you sure you want to delete this route?")) return
 
     try {
-      await deleteRoute(id)
+      await deleteRouteScoped(agencyId, id)
       await fetchAllData()
     } catch (err) {
       console.error("[RouteManagement] Error deleting route:", err)
