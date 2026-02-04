@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-// import { Inter } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import '@/app/_fix/global.css';
 
 
-// const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'TravYotei - Package Registration Form',
@@ -16,7 +16,7 @@ export default function AgencyPackageCreateLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`font-sans flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50`}>
+    <div className={`${inter.className} flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50`}>
       <div className="w-full">
 
         {children}
