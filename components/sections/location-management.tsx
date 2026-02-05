@@ -24,22 +24,6 @@ import {
   Location,
 } from "@/lib/api"
 
-const fetchCoordinates = async (cityName: string) => {
-  try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}`);
-    const data = await response.json();
-    if (data && data.length > 0) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon)
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error("Geocoding error:", error);
-    return null;
-  }
-};
 
 export function LocationManagement({ agencyId }: { agencyId: string }) {
   const [locations, setLocations] = useState<Location[]>([])
@@ -49,8 +33,6 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     cityName: "",
-    latitude: "",
-    longitude: "",
   })
 
   // DUMMY DATA: Using mock location data for development/testing
@@ -73,7 +55,7 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
   }, [])
 
   const resetForm = () => {
-    setFormData({ cityName: "", latitude: "", longitude: "" })
+    setFormData({ cityName: "" })
     setEditingId(null)
   }
 
@@ -81,8 +63,6 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
     if (location) {
       setFormData({
         cityName: location.locationname,
-        latitude: location.latitude?.toString() || "",
-        longitude: location.longitude?.toString() || "",
       })
       setEditingId(location.locationid)
     } else {
@@ -95,23 +75,9 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
     e.preventDefault()
 
     try {
-      let lat = formData.latitude ? parseFloat(formData.latitude) : undefined;
-      let lng = formData.longitude ? parseFloat(formData.longitude) : undefined;
-
-      // Automatic geocoding if coordinates are missing and it's a new location
-      if (!editingId && (lat === undefined || lng === undefined)) {
-        const coords = await fetchCoordinates(formData.cityName);
-        if (coords) {
-          lat = coords.lat;
-          lng = coords.lng;
-          console.log(`Automatically fetched coordinates for ${formData.cityName}:`, coords);
-        }
-      }
-
       const payload: Partial<Location> = {
         locationname: formData.cityName,
-        latitude: lat,
-        longitude: lng,
+        agencyid: agencyId,
       }
 
       // Check for duplicate location
@@ -152,6 +118,26 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
     }
   }
 
+  const handleDeleteAll = async () => {
+    if (locations.length === 0) return
+    if (!confirm(`Are you sure you want to delete ALL ${locations.length} locations? This action cannot be undone.`)) return
+
+    try {
+      setLoading(true)
+      for (const loc of locations) {
+        await deleteLocationScoped(agencyId, loc.locationid)
+      }
+      await fetchLocations()
+      alert("All locations deleted successfully.")
+    } catch (err) {
+      console.error("[LocationManagement] Error deleting all locations:", err)
+      alert("An error occurred while deleting all locations. Some items might not have been deleted (e.g. if they are used in routes).")
+      await fetchLocations()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -176,62 +162,50 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
           <h2 className="text-3xl font-bold text-foreground">Location Management</h2>
           <p className="text-muted-foreground mt-2">Manage cities and locations for your routes</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpen()} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Location
+        <div className="flex items-center gap-2">
+          {locations.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleDeleteAll}
+              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Location" : "Add New Location"}</DialogTitle>
-              <DialogDescription>
-                {editingId ? "Update location information" : "Enter the details of the new location"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="cityName">City Name *</Label>
-                <Input
-                  id="cityName"
-                  value={formData.cityName}
-                  onChange={(e) => setFormData({ ...formData, cityName: e.target.value })}
-                  placeholder="e.g., Douala"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="latitude">Latitude (Optional)</Label>
-                  <Input
-                    id="latitude"
-                    type="number"
-                    step="any"
-                    value={formData.latitude}
-                    onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                    placeholder="e.g., 4.05"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="longitude">Longitude (Optional)</Label>
-                  <Input
-                    id="longitude"
-                    type="number"
-                    step="any"
-                    value={formData.longitude}
-                    onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                    placeholder="e.g., 9.70"
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full">
-                {editingId ? "Update Location" : "Add Location"}
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpen()} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Location
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit Location" : "Add New Location"}</DialogTitle>
+                <DialogDescription>
+                  {editingId ? "Update location information" : "Enter the details of the new location"}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cityName">City Name *</Label>
+                  <Input
+                    id="cityName"
+                    value={formData.cityName}
+                    onChange={(e) => setFormData({ ...formData, cityName: e.target.value })}
+                    placeholder="e.g., Douala"
+                    required
+                  />
+                </div>
+
+                <Button type="submit" className="w-full">
+                  {editingId ? "Update Location" : "Add Location"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -258,7 +232,6 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>City</TableHead>
-                  <TableHead>Coordinates</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -266,12 +239,6 @@ export function LocationManagement({ agencyId }: { agencyId: string }) {
                 {locations.map((location) => (
                   <TableRow key={location.locationid}>
                     <TableCell className="font-medium">{location.locationname}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {location.latitude && location.longitude
-                        ? `${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)}`
-                        : "No coordinates"}
-                    </TableCell>
-
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => handleOpen(location)} className="gap-1">

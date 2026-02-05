@@ -786,6 +786,7 @@ export interface Assignment {
   assignmentId: string
   scheduleId: string
   driverId: string
+  busId: string
   agencyId: string
   assignmentDate: string
 }
@@ -1506,8 +1507,8 @@ interface CloudinaryResponse {
 }
 
 export async function uploadToCloudinary(file: File): Promise<CloudinaryResponse> {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME1
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET1
 
   const formData = new FormData()
   formData.append("file", file)
@@ -1528,9 +1529,9 @@ export async function uploadToCloudinary(file: File): Promise<CloudinaryResponse
 }
 
 export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-  const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY
-  const apiSecret = process.env.CLOUDINARY_API_SECRET
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME1
+  const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY1
+  const apiSecret = process.env.CLOUDINARY_API_SECRET1
   const timestamp = Math.round(new Date().getTime() / 1000)
 
   // Signature sequence: public_id=xxx&timestamp=xxx<api_secret>
@@ -1754,20 +1755,34 @@ export async function deleteRoutePriceScoped(agencyId: string, priceId: string):
 }
 
 export async function createAssignmentScoped(agencyId: string, assignment: Partial<Assignment>): Promise<Assignment> {
+  // Map frontend agencyId to backend agencyid
+  const payload = {
+    ...assignment,
+    agencyid: agencyId,
+    busid: assignment.busId
+  };
+
   const response = await fetch(`${API_BASE_URL}/api/v1/assignments/agency/${agencyId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(assignment),
+    body: JSON.stringify(payload),
   })
   if (!response.ok) throw new Error("Failed to create assignment (scoped)")
   return response.json()
 }
 
 export async function updateAssignmentScoped(agencyId: string, assignmentId: string, assignment: Partial<Assignment>): Promise<Assignment> {
+  // Map frontend agencyId to backend agencyid
+  const payload = {
+    ...assignment,
+    agencyid: agencyId,
+    busid: assignment.busId // Map busId to busid
+  };
+
   const response = await fetch(`${API_BASE_URL}/api/v1/assignments/agency/${agencyId}/${assignmentId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(assignment),
+    body: JSON.stringify(payload),
   })
   if (!response.ok) throw new Error("Failed to update assignment (scoped)")
   return response.json()

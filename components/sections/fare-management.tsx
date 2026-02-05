@@ -31,8 +31,8 @@ import {
   RoutePrice as Fare,
   Route,
   Bus,
-  getLocations,
-  getBusTypes,
+  getLocationsByAgency,
+  getBusTypesByAgency,
   Location,
   BusType,
 } from "@/lib/api"
@@ -62,8 +62,8 @@ export function FareManagement({ agencyId }: { agencyId: string }) {
         getRoutePricesByAgency(agencyId),
         getRoutesByAgency(agencyId),
         getBusesByAgency(agencyId),
-        getLocations(),
-        getBusTypes(),
+        getLocationsByAgency(agencyId),
+        getBusTypesByAgency(agencyId),
       ])
       setFares(faresData)
       setRoutes(routesData)
@@ -160,6 +160,26 @@ export function FareManagement({ agencyId }: { agencyId: string }) {
     }
   }
 
+  const handleDeleteAll = async () => {
+    if (fares.length === 0) return
+    if (!confirm(`Are you sure you want to delete ALL ${fares.length} fares? This action cannot be undone.`)) return
+
+    try {
+      setLoading(true)
+      for (const fare of fares) {
+        await deleteFare(agencyId, fare.priceId)
+      }
+      await fetchAllData()
+      alert("All fares deleted successfully.")
+    } catch (err) {
+      console.error("[FareManagement] Error in bulk delete:", err)
+      alert("An error occurred during bulk deletion.")
+      await fetchAllData()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -192,94 +212,106 @@ export function FareManagement({ agencyId }: { agencyId: string }) {
           <h2 className="text-3xl font-bold text-foreground">Fare Management</h2>
           <p className="text-muted-foreground mt-2">Manage pricing for different routes and bus classes</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpen()} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Fare
+        <div className="flex items-center gap-2">
+          {fares.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleDeleteAll}
+              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Fare" : "Add New Fare"}</DialogTitle>
-              <DialogDescription>
-                {editingId ? "Update fare information" : "Enter the details of the new fare"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="routeId">Route *</Label>
-                <Select
-                  value={formData.routeId}
-                  onValueChange={(value) => setFormData({ ...formData, routeId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a route" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {routes.map((route) => (
-                      <SelectItem key={route.routeid} value={route.routeid}>
-                        {(() => {
-                          const origin = locations.find(l => l.locationid === route.startlocationid)?.locationname || route.startlocationid;
-                          const dest = locations.find(l => l.locationid === route.endlocationid)?.locationname || route.endlocationid;
-                          return `${origin} → ${dest}`;
-                        })()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="busId">Bus *</Label>
-                <Select
-                  value={formData.busId}
-                  onValueChange={(value: string) => setFormData({ ...formData, busId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a bus" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {buses.map((bus) => {
-                      const busType = busTypes.find(t => t.busTypeId === bus.busTypeId);
-                      return (
-                        <SelectItem key={bus.busId} value={bus.busId}>
-                          {bus.registrationNumber} ({busType?.busTypeName || bus.busTypeId})
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="priceAmount">Price *</Label>
-                  <Input
-                    id="priceAmount"
-                    type="number"
-                    step="0.01"
-                    value={formData.priceAmount}
-                    onChange={(e) => setFormData({ ...formData, priceAmount: e.target.value })}
-                    placeholder="e.g., 5000"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency</Label>
-                  <Input
-                    id="currency"
-                    value={formData.currency}
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    placeholder="XAF"
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="w-full">
-                {editingId ? "Update Fare" : "Add Fare"}
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpen()} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Fare
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit Fare" : "Add New Fare"}</DialogTitle>
+                <DialogDescription>
+                  {editingId ? "Update fare information" : "Enter the details of the new fare"}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="routeId">Route *</Label>
+                  <Select
+                    value={formData.routeId}
+                    onValueChange={(value) => setFormData({ ...formData, routeId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a route" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {routes.map((route) => (
+                        <SelectItem key={route.routeid} value={route.routeid}>
+                          {(() => {
+                            const origin = locations.find(l => l.locationid === route.startlocationid)?.locationname || route.startlocationid;
+                            const dest = locations.find(l => l.locationid === route.endlocationid)?.locationname || route.endlocationid;
+                            return `${origin} → ${dest}`;
+                          })()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="busId">Bus *</Label>
+                  <Select
+                    value={formData.busId}
+                    onValueChange={(value: string) => setFormData({ ...formData, busId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a bus" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {buses.map((bus) => {
+                        const busType = busTypes.find(t => t.busTypeId === bus.busTypeId);
+                        return (
+                          <SelectItem key={bus.busId} value={bus.busId}>
+                            {bus.registrationNumber} ({busType?.busTypeName || bus.busTypeId})
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="priceAmount">Price *</Label>
+                    <Input
+                      id="priceAmount"
+                      type="number"
+                      step="0.01"
+                      value={formData.priceAmount}
+                      onChange={(e) => setFormData({ ...formData, priceAmount: e.target.value })}
+                      placeholder="e.g., 5000"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Currency</Label>
+                    <Input
+                      id="currency"
+                      value={formData.currency}
+                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                      placeholder="XAF"
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full">
+                  {editingId ? "Update Fare" : "Add Fare"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

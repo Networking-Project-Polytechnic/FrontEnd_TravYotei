@@ -15,22 +15,14 @@ import {
 } from "lucide-react"
 import NavBar from "@/components/Navbar2"
 import {
-    getLocationByName,
-    getRoutesByLocations,
-    getRoutes,
-    getSchedulesByAgency,
+    searchGlobalSchedulesByName,
     getAgencies,
-    getBusById,
-    type Schedule,
-    type Route,
-    type Location,
-    type Agency,
-    type Bus as BusType
+    type ScheduleDetails,
 } from "@/lib/api"
 import { AgencyLogo } from "@/components/AgencyLogo"
 import Link from "next/link"
 
-interface EnhancedSchedule extends Schedule {
+interface EnhancedSchedule extends ScheduleDetails {
     startLocationName?: string;
     endLocationName?: string;
     agencyName?: string;
@@ -58,92 +50,36 @@ export default function SearchContent() {
             try {
                 console.log(`Searching for: ${originQuery} -> ${destinationQuery} on ${dateQuery}`)
 
-                // 1. Resolve Locations
-                const [originLoc, destLoc] = await Promise.all([
-                    originQuery ? getLocationByName(originQuery) : Promise.resolve(null),
-                    destinationQuery ? getLocationByName(destinationQuery) : Promise.resolve(null)
-                ])
+                // Use the name-based search endpoint directly as requested
+                const [results, allAgencies] = await Promise.all([
+                    searchGlobalSchedulesByName(
+                        originQuery,
+                        destinationQuery,
+                        dateQuery || ""
+                    ),
+                    getAgencies()
+                ]);
 
-                if (originQuery && !originLoc) console.warn(`Could not resolve origin: ${originQuery}`)
-                if (destinationQuery && !destLoc) console.warn(`Could not resolve destination: ${destinationQuery}`)
+                // Map result to EnhancedSchedule
+                const enhanced: EnhancedSchedule[] = results.map(item => {
+                    const startLoc = item.startLocation?.locationname || item.route?.startlocationid || originQuery || "Origin";
+                    const endLoc = item.endLocation?.locationname || item.route?.endlocationid || destinationQuery || "Destination";
 
-                // 2. Resolve Routes
-                // If we have precise locations, we filter routes by IDs.
-                // If not, we might filter by location name matching (less precise but helpful backup logic if DB names differ slightly)
-                let allRoutes: Route[] = []
-                try {
-                    let routesData: any
-                    if (originLoc?.locationid && destLoc?.locationid) {
-                        routesData = await getRoutesByLocations(originLoc.locationid, destLoc.locationid)
-                    } else {
-                        routesData = await getRoutes()
+                    // Find the actual agency object
+                    const agency = allAgencies.find(a => String(a.id) === String(item.agencyid));
+
+                    return {
+                        ...item,
+                        startLocationName: startLoc,
+                        endLocationName: endLoc,
+                        agencyName: agency?.displayName || `${agency?.firstName} ${agency?.lastName}` || "Partner Agency",
+                        agencyLogo: agency?.profileImageUrl,
+                        busName: item.busTypeName || item.bus?.registrationNumber || "Standard Bus",
+                        duration: "Check Details"
                     }
+                });
 
-                    if (Array.isArray(routesData)) {
-                        allRoutes = routesData
-                    } else {
-                        console.warn("API returned non-array for routes:", routesData)
-                        allRoutes = []
-                    }
-                } catch (err) {
-                    console.warn("Error fetching routes:", err)
-                    allRoutes = []
-                }
-
-                const matchingRoutes = allRoutes.filter(route => {
-                    // If we have IDs:
-                    if (originLoc && route.startlocationid !== originLoc.locationid) return false
-                    if (destLoc && route.endlocationid !== destLoc.locationid) return false
-
-                    return true
-                })
-
-                if (matchingRoutes.length === 0) {
-                    setSchedules([])
-                    setLoading(false)
-                    return
-                }
-
-                // 3. Fetch Schedules from Agencies found in routes
-                // The user logic: Get routes -> Get Agency IDs -> Get Schedules for those Agencies -> Filter by Date
-
-                const allSchedules: EnhancedSchedule[] = []
-                const agencies = await getAgencies()
-
-                // Get unique agency IDs from the matching routes
-                const agencyIds = Array.from(new Set(matchingRoutes.map(r => r.agencyid)))
-
-                for (const agencyId of agencyIds) {
-                    try {
-                        const agencySchedules = await getSchedulesByAgency(agencyId)
-
-                        // Filter by Date (String comparison) and ensure route matches
-                        const relevantSchedules = agencySchedules.filter(sched => {
-                            const dateMatches = dateQuery ? sched.date === dateQuery : true
-                            const routeMatches = matchingRoutes.some(r => r.routeid === sched.routeid)
-                            return dateMatches && routeMatches
-                        })
-
-                        // Enhance them
-                        for (const sched of relevantSchedules) {
-                            const agency = agencies.find(a => a.id === sched.agencyid)
-
-                            allSchedules.push({
-                                ...sched,
-                                startLocationName: originLoc ? originLoc.locationname : "Origin",
-                                endLocationName: destLoc ? destLoc.locationname : "Destination",
-                                agencyName: agency?.displayName || `${agency?.firstName} ${agency?.lastName}` || "Unknown Agency",
-                                agencyLogo: agency?.profileImageUrl,
-                                duration: "Check Details"
-                            })
-                        }
-
-                    } catch (err) {
-                        console.error(`Error fetching schedules for agency ${agencyId}`, err)
-                    }
-                }
-
-                setSchedules(allSchedules)
+                setSchedules(enhanced)
 
             } catch (err) {
                 console.error("Search error:", err)
@@ -225,7 +161,7 @@ export default function SearchContent() {
                                             <h3 className="font-bold text-slate-900 dark:text-white">{schedule.agencyName}</h3>
                                             <div className="flex items-center text-xs text-slate-500 mt-1">
                                                 <Bus className="h-3 w-3 mr-1" />
-                                                <span>Standard Bus</span>
+                                                <span>{schedule.busTypeName || "Bus"} • {schedule.bus?.registrationNumber}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -233,21 +169,45 @@ export default function SearchContent() {
                                     {/* Journey Info */}
                                     <div className="flex-1 flex items-center justify-center gap-8">
                                         <div className="text-center">
-                                            <div className="text-xl font-black text-slate-900 dark:text-white">{schedule.departuretime}</div>
-                                            <div className="text-xs text-slate-500 font-medium uppercase mt-1">{schedule.startLocationName}</div>
+                                            <div className="text-xl font-black text-slate-900 dark:text-white">
+                                                {(() => {
+                                                    const t = schedule.departuretime || "";
+                                                    const timePart = t.includes('T') ? t.split('T')[1] : (t.includes(' ') ? t.split(' ')[1] : t);
+                                                    return timePart.substring(0, 5);
+                                                })()}
+                                            </div>
+                                            <div className="text-xs text-slate-500 font-medium uppercase mt-1">
+                                                {schedule.startLocationName}
+                                            </div>
                                         </div>
 
-                                        <div className="flex flex-col items-center px-4 w-full max-w-[200px]">
-                                            <div className="text-[10px] text-slate-400 mb-1">{schedule.duration}</div>
+                                        <div className="flex flex-col items-center px-4 w-full max-w-[210px]">
+                                            <div className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
+                                                <Bus className="h-3 w-3" />
+                                                {schedule.busMakeName} {schedule.busModelName}
+                                            </div>
                                             <div className="w-full h-[2px] bg-slate-200 dark:bg-slate-800 relative">
                                                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700"></div>
                                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+                                                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center">
+                                                    <div className="px-2 bg-slate-50 dark:bg-slate-950 text-[10px] text-slate-400 font-mono">
+                                                        {schedule.bus?.registrationNumber}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <div className="text-center">
-                                            <div className="text-xl font-black text-slate-900 dark:text-white">{schedule.arrivaltime}</div>
-                                            <div className="text-xs text-slate-500 font-medium uppercase mt-1">{schedule.endLocationName}</div>
+                                            <div className="text-xl font-black text-slate-900 dark:text-white">
+                                                {(() => {
+                                                    const t = schedule.arrivaltime || "";
+                                                    const timePart = t.includes('T') ? t.split('T')[1] : (t.includes(' ') ? t.split(' ')[1] : t);
+                                                    return timePart.substring(0, 5);
+                                                })()}
+                                            </div>
+                                            <div className="text-xs text-slate-500 font-medium uppercase mt-1">
+                                                {schedule.endLocationName}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -256,12 +216,14 @@ export default function SearchContent() {
                                         <div className="text-right">
                                             <div className="text-xs text-slate-400 mb-1">Price per person</div>
                                             <div className="text-2xl font-black text-cyan-600 dark:text-cyan-400">
-                                                {/* Placeholder price if not in schedule object, though real app should have it */}
-                                                5,000 FCFA
+                                                {schedule.price?.priceAmount ? (
+                                                    `${schedule.price.priceAmount.toLocaleString()} ${schedule.price.currency || 'FCFA'}`
+                                                ) : (
+                                                    "5,000 FCFA"
+                                                )}
                                             </div>
                                         </div>
-                                        <Link href={`/client-join`}>
-                                            {/* Ideally links to booking flow */}
+                                        <Link href={`/agencies/${schedule.agencyid}?tab=schedule&date=${schedule.date}&openSchedule=${schedule.scheduleid}`}>
                                             <button className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold text-sm tracking-wide hover:scale-105 transition-transform">
                                                 Select
                                             </button>

@@ -23,14 +23,14 @@ import {
   deleteAssignmentScoped,
   getSchedulesByAgency,
   Schedule,
-  getBuses,
-  getDrivers,
+  getBusesByAgency,
+  getDriversByAgency,
+  getLocationsByAgency,
+  getRoutesByAgency,
   Assignment,
   Bus,
   Driver,
-  getLocations,
   Location,
-  getRoutes,
   Route,
 
 } from "@/lib/api"
@@ -57,11 +57,11 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
       setLoading(true)
       const [assignmentsData, busesData, driversData, schedulesData, locationsData, routesData] = await Promise.all([
         getAssignmentsByAgency(agencyId),
-        getBuses(),
-        getDrivers(),
+        getBusesByAgency(agencyId),
+        getDriversByAgency(agencyId),
         getSchedulesByAgency(agencyId),
-        getLocations(),
-        getRoutes(),
+        getLocationsByAgency(agencyId),
+        getRoutesByAgency(agencyId),
       ])
 
       setAssignments(assignmentsData)
@@ -151,10 +151,15 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
         // scheduleId: ... missing
       }
 
+      const selectedSchedule = schedules.find(s => s.scheduleid === formData.scheduleId);
+      const busId = selectedSchedule?.busid || "";
+
       await createAssignmentScoped(agencyId, {
         driverId: formData.driverId,
         scheduleId: formData.scheduleId,
-        assignmentDate: formData.assignedFrom
+        busId: busId,
+        assignmentDate: formData.assignedFrom,
+        agencyId: agencyId
       } as any)
 
       await fetchAllData()
@@ -167,18 +172,34 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
   }
 
   const handleEndAssignment = async (id: string) => {
-    if (!confirm("Are you sure you want to end this assignment?")) return
+    if (!confirm("Are you sure you want to delete this assignment?")) return
 
     try {
       await deleteAssignmentScoped(agencyId, id)
-      // if (!response.ok) throw new Error("Failed to end assignment") // deleteAssignment throws if fails or returns bool
-      // Assuming deleteAssignment returns void or bool. api.ts implementation of delete usually is void or boolean.
-      // Checking api.ts implementation of deleteAssignment:
-      // It likely returns void or true. catch block handles error.
       await fetchAllData()
     } catch (err) {
-      console.error("[v0] Error ending assignment:", err)
-      alert("Failed to end assignment. Please try again.")
+      console.error("[DriverAssignment] Error deleting assignment:", err)
+      alert("Failed to delete assignment. Please try again.")
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    if (assignments.length === 0) return
+    if (!confirm(`Are you sure you want to delete ALL ${assignments.length} assignments? This action cannot be undone.`)) return
+
+    try {
+      setLoading(true)
+      for (const assignment of assignments) {
+        await deleteAssignmentScoped(agencyId, assignment.assignmentId)
+      }
+      await fetchAllData()
+      alert("All assignments deleted successfully.")
+    } catch (err) {
+      console.error("[DriverAssignment] Error in bulk delete:", err)
+      alert("An error occurred during bulk deletion.")
+      await fetchAllData()
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -206,77 +227,89 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
           <h2 className="text-3xl font-bold text-foreground">Driver Assignments</h2>
           <p className="text-muted-foreground mt-2">Assign drivers to buses</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleOpen} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Assign Driver
+        <div className="flex items-center gap-2">
+          {assignments.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleDeleteAll}
+              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Assign Driver to Bus</DialogTitle>
-              <DialogDescription>Create a new driver-bus assignment</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="scheduleId">Trip (Schedule) *</Label>
-                <Select value={formData.scheduleId} onValueChange={(val) => setFormData({ ...formData, scheduleId: val })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a trip" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {schedules.map((schedule) => {
-                      const route = routes.find(r => r.routeid === schedule.routeid);
-                      const origin = locations.find(l => l.locationid === route?.startlocationid)?.locationname || route?.startlocationid || "Unknown";
-                      const dest = locations.find(l => l.locationid === route?.endlocationid)?.locationname || route?.endlocationid || "Unknown";
-                      const bus = buses.find(b => b.busId === schedule.busid);
-                      const busInfo = bus ? `(${bus.registrationNumber})` : "";
-                      const date = new Date(schedule.departuretime).toLocaleString();
-
-                      return (
-                        <SelectItem key={schedule.scheduleid} value={schedule.scheduleid}>
-                          {date} - {origin} → {dest} {busInfo}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="driverId">Driver *</Label>
-                <Select value={formData.driverId} onValueChange={(val) => setFormData({ ...formData, driverId: val })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select driver" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {drivers.map((driver) => (
-                      <SelectItem key={driver.driverId} value={driver.driverId}>
-                        {driver.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="assignedFrom">Assignment Date *</Label>
-                <Input
-                  id="assignedFrom"
-                  type="datetime-local"
-                  value={formData.assignedFrom}
-                  onChange={(e) => setFormData({ ...formData, assignedFrom: e.target.value })}
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full">
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleOpen} className="gap-2">
+                <Plus className="w-4 h-4" />
                 Assign Driver
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Assign Driver to Bus</DialogTitle>
+                <DialogDescription>Create a new driver-bus assignment</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="scheduleId">Trip (Schedule) *</Label>
+                  <Select value={formData.scheduleId} onValueChange={(val) => setFormData({ ...formData, scheduleId: val })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a trip" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {schedules.map((schedule) => {
+                        const route = routes.find(r => r.routeid === schedule.routeid);
+                        const origin = locations.find(l => l.locationid === route?.startlocationid)?.locationname || route?.startlocationid || "Unknown";
+                        const dest = locations.find(l => l.locationid === route?.endlocationid)?.locationname || route?.endlocationid || "Unknown";
+                        const bus = buses.find(b => b.busId === schedule.busid);
+                        const busInfo = bus ? `(${bus.registrationNumber})` : "";
+                        const date = new Date(schedule.departuretime).toLocaleString();
+
+                        return (
+                          <SelectItem key={schedule.scheduleid} value={schedule.scheduleid}>
+                            {date} - {origin} → {dest} {busInfo}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="driverId">Driver *</Label>
+                  <Select value={formData.driverId} onValueChange={(val) => setFormData({ ...formData, driverId: val })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select driver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drivers.map((driver) => (
+                        <SelectItem key={driver.driverId} value={driver.driverId}>
+                          {driver.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="assignedFrom">Assignment Date *</Label>
+                  <Input
+                    id="assignedFrom"
+                    type="datetime-local"
+                    value={formData.assignedFrom}
+                    onChange={(e) => setFormData({ ...formData, assignedFrom: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <Button type="submit" className="w-full">
+                  Assign Driver
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -369,6 +402,6 @@ export function DriverAssignment({ agencyId }: { agencyId: string }) {
           </div>
         </CardContent>
       </Card>
-    </div >
+    </div>
   )
 }

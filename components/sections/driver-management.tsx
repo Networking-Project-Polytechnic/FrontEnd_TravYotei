@@ -169,6 +169,34 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
     }
   }
 
+  const handleDeleteAll = async () => {
+    if (drivers.length === 0) return
+    if (!confirm(`Are you sure you want to delete ALL ${drivers.length} drivers? This action cannot be undone and will remove photos from Cloudinary.`)) return
+
+    try {
+      setLoading(true)
+      for (const driver of drivers) {
+        try {
+          const images = await getDriverImages(driver.driverId)
+          for (const img of images) {
+            if (img.publicId) await deleteFromCloudinary(img.publicId)
+          }
+          await deleteDriverScoped(agencyId, driver.driverId)
+        } catch (singleErr) {
+          console.error(`Failed to delete driver ${driver.driverId}:`, singleErr)
+        }
+      }
+      await fetchDrivers()
+      alert("Driver deletion process completed. Note that some drivers might still exist if they have active dependencies.")
+    } catch (err) {
+      console.error("[DriverManagement] Error in bulk delete:", err)
+      alert("An error occurred during bulk deletion.")
+      await fetchDrivers()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -193,95 +221,107 @@ export function DriverManagement({ agencyId }: { agencyId: string }) {
           <h2 className="text-3xl font-bold text-foreground">Driver Management</h2>
           <p className="text-muted-foreground mt-2">Manage your team of drivers</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpen()} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Driver
+        <div className="flex items-center gap-2">
+          {drivers.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleDeleteAll}
+              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Driver" : "Add New Driver"}</DialogTitle>
-              <DialogDescription>
-                {editingId ? "Update driver information" : "Enter the details of the new driver"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name *</Label>
-                <Input
-                  id="fullName"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  placeholder="e.g., John Doe"
-                  required
-                />
-              </div>
-              <div className="space-y-2 relative group">
-                <Label htmlFor="phone">Phone *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 9) })}
-                  onFocus={() => setIsPhoneFocused(true)}
-                  onBlur={() => setIsPhoneFocused(false)}
-                  placeholder="e.g., 681154869"
-                  required
-                  pattern="\d{9}"
-                  title="Please enter exactly 9 digits"
-                />
-                {isPhoneFocused && (
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-3 rounded shadow-lg z-50 whitespace-nowrap">
-                    9 digits only (e.g., 681154869)
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="licenseNumber">License Number *</Label>
-                <Input
-                  id="licenseNumber"
-                  value={formData.licenseNumber}
-                  onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
-                  placeholder="e.g., DL-123456"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Notes sur le chauffeur (expérience, spécialités...)"
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="photo">Photo</Label>
-                <Input
-                  id="photo"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, photo: e.target.files ? e.target.files[0] : null })}
-                />
-                {formData.photo ? (
-                  <img src={URL.createObjectURL(formData.photo)} alt="New photo" className="w-20 h-20 object-cover rounded mt-2" />
-                ) : currentPhotoUrl ? (
-                  <img src={currentPhotoUrl} alt="Current photo" className="w-20 h-20 object-cover rounded mt-2" />
-                ) : null}
-              </div>
-
-              <Button type="submit" className="w-full">
-                {editingId ? "Update Driver" : "Add Driver"}
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpen()} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Driver
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit Driver" : "Add New Driver"}</DialogTitle>
+                <DialogDescription>
+                  {editingId ? "Update driver information" : "Enter the details of the new driver"}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Input
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    placeholder="e.g., John Doe"
+                    required
+                  />
+                </div>
+                <div className="space-y-2 relative group">
+                  <Label htmlFor="phone">Phone *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                    onFocus={() => setIsPhoneFocused(true)}
+                    onBlur={() => setIsPhoneFocused(false)}
+                    placeholder="e.g., 681154869"
+                    required
+                    pattern="\d{9}"
+                    title="Please enter exactly 9 digits"
+                  />
+                  {isPhoneFocused && (
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-3 rounded shadow-lg z-50 whitespace-nowrap">
+                      9 digits only (e.g., 681154869)
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="licenseNumber">License Number *</Label>
+                  <Input
+                    id="licenseNumber"
+                    value={formData.licenseNumber}
+                    onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
+                    placeholder="e.g., DL-123456"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Notes sur le chauffeur (expérience, spécialités...)"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="photo">Photo</Label>
+                  <Input
+                    id="photo"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setFormData({ ...formData, photo: e.target.files ? e.target.files[0] : null })}
+                  />
+                  {formData.photo ? (
+                    <img src={URL.createObjectURL(formData.photo)} alt="New photo" className="w-20 h-20 object-cover rounded mt-2" />
+                  ) : currentPhotoUrl ? (
+                    <img src={currentPhotoUrl} alt="Current photo" className="w-20 h-20 object-cover rounded mt-2" />
+                  ) : null}
+                </div>
+
+                <Button type="submit" className="w-full">
+                  {editingId ? "Update Driver" : "Add Driver"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>

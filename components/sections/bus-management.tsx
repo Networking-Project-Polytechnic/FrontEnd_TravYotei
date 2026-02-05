@@ -26,14 +26,14 @@ import {
   createBusScoped,
   updateBusScoped,
   deleteBusScoped,
-  getBusMakes,
-  getBusModels,
-  getManufacturers,
-  getFuelTypes,
-  getTransmissionTypes,
-  getBusTypes,
-  getVehicleAmenities,
-  getBusTransportables,
+  getBusMakesByAgency,
+  getBusModelsByAgency,
+  getManufacturersByAgency,
+  getFuelTypesByAgency,
+  getTransmissionTypesByAgency,
+  getBusTypesByAgency,
+  getVehicleAmenitiesByAgency,
+  getTransportablesByAgency,
   createBusMake,
   createBusModel,
   createManufacturer,
@@ -117,14 +117,14 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
         transportablesData
       ] = await Promise.all([
         getBusesByAgency(agencyId),
-        getBusMakes(),
-        getBusModels(),
-        getManufacturers(),
-        getFuelTypes(),
-        getTransmissionTypes(),
-        getBusTypes(),
-        getVehicleAmenities(),
-        getBusTransportables()
+        getBusMakesByAgency(agencyId),
+        getBusModelsByAgency(agencyId),
+        getManufacturersByAgency(agencyId),
+        getFuelTypesByAgency(agencyId),
+        getTransmissionTypesByAgency(agencyId),
+        getBusTypesByAgency(agencyId),
+        getVehicleAmenitiesByAgency(agencyId),
+        getTransportablesByAgency(agencyId)
       ])
 
       setBuses(busesData)
@@ -223,7 +223,7 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
         makeName: inputValue,
         agencyId: agencyId
       });
-      const updatedMakes = await getBusMakes();
+      const updatedMakes = await getBusMakesByAgency(agencyId);
       setMakes(updatedMakes);
       setFormData(prev => ({ ...prev, busMakeId: newMake.busMakeId }));
     } catch (err) {
@@ -235,7 +235,7 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
   const handleCreateBusModel = async (inputValue: string) => {
     try {
       const newModel = await createBusModel({ modelName: inputValue, agencyId });
-      setModels(await getBusModels());
+      setModels(await getBusModelsByAgency(agencyId));
       setFormData(prev => ({ ...prev, busModelId: newModel.busModelId }));
     } catch (err) {
       console.error("Failed to create model:", err);
@@ -246,7 +246,7 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
   const handleCreateManufacturer = async (inputValue: string) => {
     try {
       const newMan = await createManufacturer({ manufacturerName: inputValue, agencyId });
-      setManufacturers(await getManufacturers());
+      setManufacturers(await getManufacturersByAgency(agencyId));
       setFormData(prev => ({ ...prev, manufacturerId: newMan.manufacturerId }));
     } catch (err) {
       console.error("Failed to create manufacturer:", err);
@@ -257,7 +257,7 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
   const handleCreateFuelType = async (inputValue: string) => {
     try {
       const newFuel = await createFuelType({ fuelTypeName: inputValue, agencyId });
-      setFuelTypes(await getFuelTypes());
+      setFuelTypes(await getFuelTypesByAgency(agencyId));
       setFormData(prev => ({ ...prev, fuelTypeId: newFuel.fuelTypeId }));
     } catch (err) {
       console.error("Failed to create fuel type:", err);
@@ -268,7 +268,7 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
   const handleCreateBusType = async (inputValue: string) => {
     try {
       const newType = await createBusType({ busTypeName: inputValue, agencyId });
-      setBusTypes(await getBusTypes());
+      setBusTypes(await getBusTypesByAgency(agencyId));
       setFormData(prev => ({ ...prev, busTypeId: newType.busTypeId }));
     } catch (err) {
       console.error("Failed to create bus type:", err);
@@ -375,6 +375,34 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
     }
   }
 
+  const handleDeleteAll = async () => {
+    if (buses.length === 0) return
+    if (!confirm(`Are you sure you want to delete ALL ${buses.length} buses? This action cannot be undone and will remove photos from Cloudinary.`)) return
+
+    try {
+      setLoading(true)
+      for (const bus of buses) {
+        try {
+          const images = await getBusImages(bus.busId)
+          for (const img of images) {
+            if (img.publicId) await deleteFromCloudinary(img.publicId)
+          }
+          await deleteBusScoped(agencyId, bus.busId)
+        } catch (singleErr) {
+          console.error(`Failed to delete bus ${bus.busId}:`, singleErr)
+        }
+      }
+      await fetchAll()
+      alert("Bus deletion process completed. Note that some buses might still exist if they have active dependencies (Trips, etc).")
+    } catch (err) {
+      console.error("[BusManagement] Error in bulk delete:", err)
+      alert("An error occurred during bulk deletion.")
+      await fetchAll()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const toggleAmenity = (id: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -423,270 +451,282 @@ export function BusManagement({ agencyId }: { agencyId: string }) {
           <h2 className="text-3xl font-bold text-foreground">Fleet Management</h2>
           <p className="text-muted-foreground mt-2">Monitor and manage your vehicle fleet</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpen()} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Bus
+        <div className="flex items-center gap-2">
+          {buses.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleDeleteAll}
+              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Bus Details" : "Register New Bus"}</DialogTitle>
-              <DialogDescription>
-                {editingId ? "Modify bus specifications and status" : "Enter technical details for the new fleet entry"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="registrationNumber">Registration Number *</Label>
-                  <Input
-                    id="registrationNumber"
-                    value={formData.registrationNumber}
-                    onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
-                    placeholder="e.g., KE-100-ABC"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="registrationExpiryDate">Reg. Expiry Date</Label>
-                  <Input
-                    id="registrationExpiryDate"
-                    type="date"
-                    value={formData.registrationExpiryDate}
-                    onChange={(e) => setFormData({ ...formData, registrationExpiryDate: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="busTypeId">Bus Type *</Label>
-                  <CreatableSelect
-                    options={busTypes.map(t => ({ label: t.busTypeName, value: t.busTypeId }))}
-                    value={formData.busTypeId}
-                    onChange={(val) => setFormData({ ...formData, busTypeId: val })}
-                    onCreate={handleCreateBusType}
-                    placeholder="Select or Create Type"
-                    searchPlaceholder="Search Type..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="totalSeats">Total Seats *</Label>
-                  <Input
-                    id="totalSeats"
-                    type="number"
-                    min="1"
-                    value={formData.totalSeats}
-                    onChange={(e) => setFormData({ ...formData, totalSeats: e.target.value })}
-                    placeholder="e.g., 50"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="busMakeId">Make *</Label>
-                  <CreatableSelect
-                    options={makes.map(m => ({ label: m.makeName, value: m.busMakeId }))}
-                    value={formData.busMakeId}
-                    onChange={(val) => setFormData({ ...formData, busMakeId: val })}
-                    onCreate={handleCreateMake}
-                    placeholder="Select or Create Make"
-                    searchPlaceholder="Search Make..."
-                  />
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpen()} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Bus
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit Bus Details" : "Register New Bus"}</DialogTitle>
+                <DialogDescription>
+                  {editingId ? "Modify bus specifications and status" : "Enter technical details for the new fleet entry"}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="registrationNumber">Registration Number *</Label>
+                    <Input
+                      id="registrationNumber"
+                      value={formData.registrationNumber}
+                      onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
+                      placeholder="e.g., KE-100-ABC"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="registrationExpiryDate">Reg. Expiry Date</Label>
+                    <Input
+                      id="registrationExpiryDate"
+                      type="date"
+                      value={formData.registrationExpiryDate}
+                      onChange={(e) => setFormData({ ...formData, registrationExpiryDate: e.target.value })}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="busModelId">Model *</Label>
-                  <CreatableSelect
-                    options={models.map(m => ({ label: m.modelName, value: m.busModelId }))}
-                    value={formData.busModelId}
-                    onChange={(val) => setFormData({ ...formData, busModelId: val })}
-                    onCreate={handleCreateBusModel}
-                    placeholder="Select or Create Model"
-                    searchPlaceholder="Search Model..."
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="busTypeId">Bus Type *</Label>
+                    <CreatableSelect
+                      options={busTypes.map(t => ({ label: t.busTypeName, value: t.busTypeId }))}
+                      value={formData.busTypeId}
+                      onChange={(val) => setFormData({ ...formData, busTypeId: val })}
+                      onCreate={handleCreateBusType}
+                      placeholder="Select or Create Type"
+                      searchPlaceholder="Search Type..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="totalSeats">Total Seats *</Label>
+                    <Input
+                      id="totalSeats"
+                      type="number"
+                      min="1"
+                      value={formData.totalSeats}
+                      onChange={(e) => setFormData({ ...formData, totalSeats: e.target.value })}
+                      placeholder="e.g., 50"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="manufacturerId">Manufacturer *</Label>
-                  <CreatableSelect
-                    options={manufacturers.map(m => ({ label: m.manufacturerName, value: m.manufacturerId }))}
-                    value={formData.manufacturerId}
-                    onChange={(val) => setFormData({ ...formData, manufacturerId: val })}
-                    onCreate={handleCreateManufacturer}
-                    placeholder="Select or Create Manuf."
-                    searchPlaceholder="Search Manufacturer..."
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="busMakeId">Make *</Label>
+                    <CreatableSelect
+                      options={makes.map(m => ({ label: m.makeName, value: m.busMakeId }))}
+                      value={formData.busMakeId}
+                      onChange={(val) => setFormData({ ...formData, busMakeId: val })}
+                      onCreate={handleCreateMake}
+                      placeholder="Select or Create Make"
+                      searchPlaceholder="Search Make..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="busModelId">Model *</Label>
+                    <CreatableSelect
+                      options={models.map(m => ({ label: m.modelName, value: m.busModelId }))}
+                      value={formData.busModelId}
+                      onChange={(val) => setFormData({ ...formData, busModelId: val })}
+                      onCreate={handleCreateBusModel}
+                      placeholder="Select or Create Model"
+                      searchPlaceholder="Search Model..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="manufacturerId">Manufacturer *</Label>
+                    <CreatableSelect
+                      options={manufacturers.map(m => ({ label: m.manufacturerName, value: m.manufacturerId }))}
+                      value={formData.manufacturerId}
+                      onChange={(val) => setFormData({ ...formData, manufacturerId: val })}
+                      onCreate={handleCreateManufacturer}
+                      placeholder="Select or Create Manuf."
+                      searchPlaceholder="Search Manufacturer..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fuelTypeId">Fuel Type *</Label>
+                    <CreatableSelect
+                      options={fuelTypes.map(f => ({ label: f.fuelTypeName, value: f.fuelTypeId }))}
+                      value={formData.fuelTypeId}
+                      onChange={(val) => setFormData({ ...formData, fuelTypeId: val })}
+                      onCreate={handleCreateFuelType}
+                      placeholder="Select or Create Fuel"
+                      searchPlaceholder="Search Fuel..."
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="fuelTypeId">Fuel Type *</Label>
-                  <CreatableSelect
-                    options={fuelTypes.map(f => ({ label: f.fuelTypeName, value: f.fuelTypeId }))}
-                    value={formData.fuelTypeId}
-                    onChange={(val) => setFormData({ ...formData, fuelTypeId: val })}
-                    onCreate={handleCreateFuelType}
-                    placeholder="Select or Create Fuel"
-                    searchPlaceholder="Search Fuel..."
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="transmissionTypeId">Transmission *</Label>
+                    <Select
+                      value={formData.transmissionTypeId}
+                      onValueChange={(val) => setFormData({ ...formData, transmissionTypeId: val })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select transmission" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {transmissionTypes.map((type) => (
+                          <SelectItem key={type.transmissionTypeId} value={type.transmissionTypeId}>
+                            {type.typeName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="transmissionTypeId">Transmission *</Label>
-                  <Select
-                    value={formData.transmissionTypeId}
-                    onValueChange={(val) => setFormData({ ...formData, transmissionTypeId: val })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select transmission" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {transmissionTypes.map((type) => (
-                        <SelectItem key={type.transmissionTypeId} value={type.transmissionTypeId}>
-                          {type.typeName}
-                        </SelectItem>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="luggageCapacityKg">Luggage (kg)</Label>
+                    <Input
+                      id="luggageCapacityKg"
+                      type="number"
+                      value={formData.luggageCapacityKg}
+                      onChange={(e) => setFormData({ ...formData, luggageCapacityKg: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tankCapacityLiters">Tank (L)</Label>
+                    <Input
+                      id="tankCapacityLiters"
+                      type="number"
+                      value={formData.tankCapacityLiters}
+                      onChange={(e) => setFormData({ ...formData, tankCapacityLiters: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="mileageKm">Mileage (km)</Label>
+                    <Input
+                      id="mileageKm"
+                      type="number"
+                      value={formData.mileageKm}
+                      onChange={(e) => setFormData({ ...formData, mileageKm: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                  <div className="space-y-2">
+                    <Label>Amenities</Label>
+                    <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto pr-2">
+                      {availableAmenities.map((amenity) => (
+                        <div key={amenity.amenityId} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`amenity-${amenity.amenityId}`}
+                            checked={formData.amenities.includes(amenity.amenityId)}
+                            onCheckedChange={() => toggleAmenity(amenity.amenityId)}
+                          />
+                          <label
+                            htmlFor={`amenity-${amenity.amenityId}`}
+                            className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {amenity.amenityName}
+                          </label>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="luggageCapacityKg">Luggage (kg)</Label>
-                  <Input
-                    id="luggageCapacityKg"
-                    type="number"
-                    value={formData.luggageCapacityKg}
-                    onChange={(e) => setFormData({ ...formData, luggageCapacityKg: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tankCapacityLiters">Tank (L)</Label>
-                  <Input
-                    id="tankCapacityLiters"
-                    type="number"
-                    value={formData.tankCapacityLiters}
-                    onChange={(e) => setFormData({ ...formData, tankCapacityLiters: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mileageKm">Mileage (km)</Label>
-                  <Input
-                    id="mileageKm"
-                    type="number"
-                    value={formData.mileageKm}
-                    onChange={(e) => setFormData({ ...formData, mileageKm: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 border-t pt-4">
-                <div className="space-y-2">
-                  <Label>Amenities</Label>
-                  <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto pr-2">
-                    {availableAmenities.map((amenity) => (
-                      <div key={amenity.amenityId} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`amenity-${amenity.amenityId}`}
-                          checked={formData.amenities.includes(amenity.amenityId)}
-                          onCheckedChange={() => toggleAmenity(amenity.amenityId)}
-                        />
-                        <label
-                          htmlFor={`amenity-${amenity.amenityId}`}
-                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {amenity.amenityName}
-                        </label>
-                      </div>
-                    ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Can Transport</Label>
+                    <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto pr-2">
+                      {availableTransportables.map((item) => (
+                        <div key={item.transportId} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`transport-${item.transportId}`}
+                            checked={formData.canTransport.includes(item.transportId)}
+                            onCheckedChange={() => toggleTransport(item.transportId)}
+                          />
+                          <label
+                            htmlFor={`transport-${item.transportId}`}
+                            className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {item.itemName}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Can Transport</Label>
-                  <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto pr-2">
-                    {availableTransportables.map((item) => (
-                      <div key={item.transportId} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`transport-${item.transportId}`}
-                          checked={formData.canTransport.includes(item.transportId)}
-                          onCheckedChange={() => toggleTransport(item.transportId)}
-                        />
-                        <label
-                          htmlFor={`transport-${item.transportId}`}
-                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {item.itemName}
-                        </label>
-                      </div>
-                    ))}
+
+                <div className="space-y-2 border-t pt-4">
+                  <Label>Bus Images</Label>
+                  <div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      onClick={() => document.getElementById('busImages')?.click()}
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Upload Images</span>
+                    </Button>
+                    <input
+                      id="busImages"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={(e) => handleImageChange(e.target.files)}
+                    />
                   </div>
-                </div>
-              </div>
 
-              <div className="space-y-2 border-t pt-4">
-                <Label>Bus Images</Label>
-                <div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex items-center gap-2"
-                    onClick={() => document.getElementById('busImages')?.click()}
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Upload Images</span>
-                  </Button>
-                  <input
-                    id="busImages"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    style={{ display: 'none' }}
-                    onChange={(e) => handleImageChange(e.target.files)}
-                  />
+                  {imagePreviews.length > 0 && (
+                    <div className="flex gap-2 mt-2">
+                      {imagePreviews.map((src, idx) => (
+                        <img key={idx} src={src} alt={`preview-${idx}`} className="w-20 h-14 object-cover rounded border" />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {imagePreviews.length > 0 && (
-                  <div className="flex gap-2 mt-2">
-                    {imagePreviews.map((src, idx) => (
-                      <img key={idx} src={src} alt={`preview-${idx}`} className="w-20 h-14 object-cover rounded border" />
-                    ))}
+                {editingId && currentReviews.length > 0 && (
+                  <div className="space-y-2 border-t pt-4">
+                    <Label>Recent Reviews</Label>
+                    <div className="space-y-3">
+                      {currentReviews.map((rev) => (
+                        <div key={rev.reviewId} className="bg-muted/50 p-3 rounded-lg text-xs">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-bold">{rev.customerName}</span>
+                            <span className="text-primary">★ {rev.rating}/5</span>
+                          </div>
+                          <p className="text-muted-foreground italic">"{rev.comment}"</p>
+                          <p className="text-[10px] mt-1 text-right text-muted-foreground">
+                            {new Date(rev.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {editingId && currentReviews.length > 0 && (
-                <div className="space-y-2 border-t pt-4">
-                  <Label>Recent Reviews</Label>
-                  <div className="space-y-3">
-                    {currentReviews.map((rev) => (
-                      <div key={rev.reviewId} className="bg-muted/50 p-3 rounded-lg text-xs">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-bold">{rev.customerName}</span>
-                          <span className="text-primary">★ {rev.rating}/5</span>
-                        </div>
-                        <p className="text-muted-foreground italic">"{rev.comment}"</p>
-                        <p className="text-[10px] mt-1 text-right text-muted-foreground">
-                          {new Date(rev.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <Button type="submit" className="w-full">
-                {editingId ? "Update Bus Profile" : "Register Bus"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <Button type="submit" className="w-full">
+                  {editingId ? "Update Bus Profile" : "Register Bus"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>

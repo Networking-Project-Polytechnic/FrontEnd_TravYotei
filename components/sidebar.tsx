@@ -2,9 +2,10 @@
 
 import type React from "react"
 
-import { Bus, Users, RouteIcon, Calendar, UserCheck, DollarSign, MapPin, Settings2, LogOut } from "lucide-react"
+import { Bus, Users, RouteIcon, Calendar, UserCheck, DollarSign, MapPin, Settings2, LogOut, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/AuthContext"
+import Link from "next/link"
 
 type Section = "buses" | "drivers" | "locations" | "routes" | "fares" | "trips" | "assignments" | "parameters"
 
@@ -51,8 +52,17 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         })}
       </nav>
 
-      {/* Logout Button */}
-      <div className="p-4 border-t border-white/10">
+      {/* Navigation Buttons */}
+      <div className="p-4 border-t border-white/10 space-y-2">
+        <Link href="/">
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-white hover:bg-white/10"
+          >
+            <Home className="w-4 h-4" />
+            Back to Home
+          </Button>
+        </Link>
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-red-400 hover:text-red-300 hover:bg-red-500/10"

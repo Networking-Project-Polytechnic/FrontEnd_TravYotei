@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Star,
@@ -56,11 +56,25 @@ const formatTime = (timeString: string) => {
 
 export default function AgencyDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const [agency, setAgency] = useState<Agency | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [dateHistory, setDateHistory] = useState<string[]>([new Date().toISOString().split('T')[0]]);
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
+  const [selectedDate, setSelectedDate] = useState<string>(searchParams.get('date') || new Date().toISOString().split('T')[0]);
+  const [dateHistory, setDateHistory] = useState<string[]>([searchParams.get('date') || new Date().toISOString().split('T')[0]]);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) setActiveTab(tab);
+
+    const date = searchParams.get('date');
+    if (date) setSelectedDate(date);
+
+    const openScheduleId = searchParams.get('openSchedule');
+    if (openScheduleId && !loading) {
+      handleScheduleClick(openScheduleId);
+    }
+  }, [searchParams, loading]);
 
   // Backend Data State
   const [overview, setOverview] = useState<any>(null);
@@ -326,30 +340,7 @@ export default function AgencyDetailPage() {
                       />
                     </div>
 
-                    <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-6 px-1">Recently Picked</h3>
-                    <div className="space-y-2">
-                      {dateHistory.map((date) => {
-                        const dateObj = new Date(date);
-                        const isSelected = selectedDate === date;
-                        return (
-                          <button
-                            key={date}
-                            onClick={() => setSelectedDate(date)}
-                            className={`w-full flex flex-col items-start p-4 rounded-none border transition-all ${isSelected
-                              ? 'bg-cyan-600 border-cyan-600 text-white'
-                              : 'bg-white dark:bg-slate-800/50 border-gray-100 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:border-cyan-500/50'
-                              }`}
-                          >
-                            <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-1 ${isSelected ? 'text-cyan-100' : 'text-gray-400'}`}>
-                              {dateObj.toLocaleDateString('en-US', { weekday: 'long' })}
-                            </span>
-                            <span className="text-lg font-bold tabular-nums">
-                              {dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+
 
                     <div className="mt-8 p-6 bg-amber-50 dark:bg-amber-900/10 rounded-none border border-amber-100 dark:border-amber-900/30">
                       <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-2">

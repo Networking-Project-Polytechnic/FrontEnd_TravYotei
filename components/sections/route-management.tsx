@@ -21,7 +21,7 @@ import {
   createRouteScoped,
   updateRouteScoped,
   deleteRouteScoped,
-  getLocations,
+  getLocationsByAgency,
   createLocationScoped,
   getLocationByName,
   Route,
@@ -32,7 +32,7 @@ import * as turf from "@turf/turf"
 
 const fetchCoordinates = async (cityName: string) => {
   try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}`);
+    const response = await fetch(`/api/proxy/nominatim?q=${encodeURIComponent(cityName)}`);
     const data = await response.json();
     if (data && data.length > 0) {
       return {
@@ -65,7 +65,7 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
       setLoading(true)
       const [routesData, locationsData] = await Promise.all([
         getRoutesByAgency(agencyId),
-        getLocations(),
+        getLocationsByAgency(agencyId),
       ])
       setRoutes(routesData)
       setLocations(locationsData)
@@ -122,22 +122,19 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
       if (backendExists) {
         setFormData((prev) => ({ ...prev, [field]: backendExists.locationid }))
         // Refresh state to include it if it was missing for some reason
-        const updatedLocations = await getLocations()
+        const updatedLocations = await getLocationsByAgency(agencyId)
         setLocations(updatedLocations)
         return
       }
 
-      // 3. Create new with automatic geocoding
-      const coords = await fetchCoordinates(cityName);
-
+      // 3. Create new location (without coordinates persistence as requested)
       const newLoc = await createLocationScoped(agencyId, {
         locationname: cityName,
-        latitude: coords?.lat,
-        longitude: coords?.lng
+        agencyid: agencyId,
       })
 
       // 4. Refresh and select
-      const updatedLocations = await getLocations()
+      const updatedLocations = await getLocationsByAgency(agencyId)
       setLocations(updatedLocations)
       setFormData((prev) => ({ ...prev, [field]: newLoc.locationid }))
 
@@ -260,6 +257,26 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
     }
   }
 
+  const handleDeleteAll = async () => {
+    if (routes.length === 0) return
+    if (!confirm(`Are you sure you want to delete ALL ${routes.length} routes? This action cannot be undone.`)) return
+
+    try {
+      setLoading(true)
+      for (const route of routes) {
+        await deleteRouteScoped(agencyId, route.routeid)
+      }
+      await fetchAllData()
+      alert("All routes deleted successfully.")
+    } catch (err) {
+      console.error("[RouteManagement] Error deleting all routes:", err)
+      alert("An error occurred while deleting all routes. Some routes might not have been deleted.")
+      await fetchAllData()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,60 +301,72 @@ export function RouteManagement({ agencyId }: { agencyId: string }) {
           <h2 className="text-3xl font-bold text-foreground">Route Management</h2>
           <p className="text-muted-foreground mt-2">Manage travel routes between cities</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpen()} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Route
+        <div className="flex items-center gap-2">
+          {routes.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleDeleteAll}
+              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Route" : "Add New Route"}</DialogTitle>
-              <DialogDescription>
-                {editingId ? "Update route information" : "Enter the details of the new route"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="originCity">Origin City *</Label>
-                <CreatableSelect
-                  options={locations.map((l) => ({ label: l.locationname, value: l.locationid }))}
-                  value={formData.originCity}
-                  onChange={(val) => setFormData({ ...formData, originCity: val })}
-                  onCreate={(val) => handleCreateLocation(val, "originCity")}
-                  placeholder="Select or create origin city"
-                  searchPlaceholder="Search city..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="destinationCity">Destination City *</Label>
-                <CreatableSelect
-                  options={locations.map((l) => ({ label: l.locationname, value: l.locationid }))}
-                  value={formData.destinationCity}
-                  onChange={(val) => setFormData({ ...formData, destinationCity: val })}
-                  onCreate={(val) => handleCreateLocation(val, "destinationCity")}
-                  placeholder="Select or create destination city"
-                  searchPlaceholder="Search city..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="stopPoints">Stop Points (Optional)</Label>
-                <Input
-                  id="stopPoints"
-                  placeholder="Enter stop points separated by commas"
-                  value={formData.stopPoints}
-                  onChange={(e) => setFormData({ ...formData, stopPoints: e.target.value })}
-                />
-              </div>
-
-              <Button type="submit" className="w-full">
-                {editingId ? "Update Route" : "Add Route"}
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpen()} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Route
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit Route" : "Add New Route"}</DialogTitle>
+                <DialogDescription>
+                  {editingId ? "Update route information" : "Enter the details of the new route"}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="originCity">Origin City *</Label>
+                  <CreatableSelect
+                    options={locations.map((l) => ({ label: l.locationname, value: l.locationid }))}
+                    value={formData.originCity}
+                    onChange={(val) => setFormData({ ...formData, originCity: val })}
+                    onCreate={(val) => handleCreateLocation(val, "originCity")}
+                    placeholder="Select or create origin city"
+                    searchPlaceholder="Search city..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="destinationCity">Destination City *</Label>
+                  <CreatableSelect
+                    options={locations.map((l) => ({ label: l.locationname, value: l.locationid }))}
+                    value={formData.destinationCity}
+                    onChange={(val) => setFormData({ ...formData, destinationCity: val })}
+                    onCreate={(val) => handleCreateLocation(val, "destinationCity")}
+                    placeholder="Select or create destination city"
+                    searchPlaceholder="Search city..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="stopPoints">Stop Points (Optional)</Label>
+                  <Input
+                    id="stopPoints"
+                    placeholder="Enter stop points separated by commas"
+                    value={formData.stopPoints}
+                    onChange={(e) => setFormData({ ...formData, stopPoints: e.target.value })}
+                  />
+                </div>
+
+                <Button type="submit" className="w-full">
+                  {editingId ? "Update Route" : "Add Route"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
