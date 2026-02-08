@@ -77,10 +77,10 @@ export default function NavBar() {
                 Agencies
               </Link>
               <Link
-                href="/services"
+                href="/pricing"
                 className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
               >
-                Services
+                Pricing
               </Link>
               <Link
                 href="/contact"
@@ -231,7 +231,7 @@ export default function NavBar() {
           <div className="flex space-x-4">
             <Link href="/" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Home</Link>
             <Link href="/agencies" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Agencies</Link>
-            <Link href="/services" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Services</Link>
+            <Link href="/pricing" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Pricing</Link>
             <Link href="/contact" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Contact</Link>
           </div>
           <div className="flex items-center space-x-4">
