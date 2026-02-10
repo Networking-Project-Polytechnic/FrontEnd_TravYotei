@@ -48,8 +48,8 @@ export type Agency = {
 const mockAgencies: Agency[] = [
   {
     id: '1',
-    firstName: 'Parklane',
-    lastName: 'Travels',
+    firstName: 'Mystery',
+    lastName: 'Travelers',
     userName: 'parklanetravels',
     email: 'contact@parklanetravels.cm',
     role: Role.AGENCY,
@@ -403,6 +403,29 @@ export const signup_admin = async (userData: {
   }
 };
 
+// Upgrade client to agency
+export const upgradeToAgency = async (upgradeDetails: {
+  firstName?: string;
+  lastName?: string;
+  phoneNumber: number; // Keep as number to match backend DTO expectation
+  address: string;
+  licenseNumber: string;
+}) => {
+  try {
+    console.log('📤 Sending upgrade request:', upgradeDetails);
+    const response = await api_auth.post('/user/upgrade-to-agency', upgradeDetails);
+    console.log('✅ Upgrade successful:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [API] Upgrade to Agency error:', error);
+    if (error.response) {
+      console.error('Backend error status:', error.response.status);
+      console.error('Backend error data:', JSON.stringify(error.response.data, null, 2));
+    }
+    throw error;
+  }
+};
+
 // Get user profile (requires JWT token)
 export const fetchUserProfile = async () => {
   try {
@@ -507,20 +530,13 @@ export const validateToken = async () => {
 };
 
 // Logout (optional - if you have logout endpoint)
+// Logout (optional - if you have logout endpoint)
 export const logout = async () => {
-  try {
-    // If backend has logout endpoint
-    await api_auth.post('/auth/logout'); // Still to create this endpoint
-  } catch (error) {
-    // Even if backend logout fails, we clear frontend storage
-    console.warn('Backend logout failed, clearing frontend storage');
-  } finally {
-    // Always clear frontend storage
-    localStorage.removeItem('token');
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_data');
-    localStorage.removeItem('user_role');
-  }
+  // No backend logout endpoint, just clear frontend storage
+  localStorage.removeItem('token');
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_data');
+  localStorage.removeItem('user_role');
 };
 
 // Check authentication status

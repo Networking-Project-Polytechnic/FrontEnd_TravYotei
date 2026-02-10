@@ -1,7 +1,7 @@
 // app/context/AuthContext.tsx
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import * as api from '@/lib/api';
 
@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const isLoggingOut = useRef(false);
 
   // Refresh profile data from backend
   const refreshProfile = async (): Promise<User> => {
@@ -75,9 +76,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading) {
       const publicRoutes = ['/client-join', '/agency-join', '/', '/agencies', '/agencies/00000000-0000-0000-0000-000000000000', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000000000000'];
+
       const isPublicRoute = publicRoutes.includes(pathname) ||
         pathname.startsWith('/api/') ||
-        pathname.startsWith('/_next/');
+        pathname.startsWith('/_next/') ||
+        pathname.startsWith('/agencies');
+
+      // If we have successfully navigated to a public route, we can lower the logout flag
+      if (isPublicRoute && isLoggingOut.current) {
+        console.log('🔓 [AuthContext] Landed on public route, resetting logout flag');
+        isLoggingOut.current = false;
+      }
 
       console.log('🛡️ [AuthContext] Protection Check:', {
         pathname,
@@ -89,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Check for a flag to suppress automatic redirection (e.g., during onboarding)
       const skipRedirect = typeof window !== 'undefined' && sessionStorage.getItem('skip_auth_redirect') === 'true';
 
-      if (!user && !isPublicRoute) {
+      if (!user && !isPublicRoute && !isLoggingOut.current) {
         const returnUrl = encodeURIComponent(pathname);
         console.log('🔒 [AuthContext] Access Denied: Redirecting to login. Return URL:', returnUrl);
 
@@ -216,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (userName: string, password: string) => {
+    isLoggingOut.current = false;
     setLoading(true);
     console.log('🔑 Attempting login for user:', userName);
 
@@ -329,34 +339,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     console.log('👋 Logging out...');
+    isLoggingOut.current = true;
 
-    // Store the current role before clearing
-    const rawRole = user?.role;
-    const currentRole = rawRole?.toUpperCase()?.replace('ROLE_', '');
+    // Prevent route protection from triggering user undefined redirect while we navigate
+    setLoading(true);
 
-    try {
-      await api.logout();
-    } catch (error) {
-      console.log('ℹ️ Backend logout not available, clearing frontend only');
-    } finally {
-      clearStorage();
-      setUser(null);
+    // No backend logout endpoint available, so we just clear frontend storage
+    clearStorage();
+    setUser(null);
 
-      // Redirect based on previous role
-      // We want to go to the SIGNUP page as requested
-      if (currentRole === 'CLIENT') {
-        router.push('/client-join?mode=signup');
-      } else if (currentRole === 'AGENCY') {
-        router.push('/agency-join?mode=signup');
-      } else if (currentRole === 'ADMIN') {
-        router.push('/admin-join?mode=signup');
-      } else {
-        // Default fallback
-        router.push('/client-join?mode=signup');
-      }
+    // Redirect to home page as requested
+    router.push('/');
 
-      console.log('✅ Logout complete for role:', currentRole);
-    }
+    // Short timeout to ensure navigation starts before we re-enable checks
+    setTimeout(() => {
+      setLoading(false);
+      // Do NOT reset isLoggingOut here. It will be reset when we hit a public route.
+      console.log('✅ Logout complete');
+    }, 2000);
   };
 
   const updateUser = (userData: Partial<User>) => {

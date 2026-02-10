@@ -44,6 +44,8 @@ import {
   Bus as BusType
 } from '@/lib/api';
 import { AgencyLogo } from '@/components/AgencyLogo';
+import { useAuth } from '@/context/AuthContext';
+import { AuthPromptModal } from '@/components/AuthPromptModal';
 
 const formatTime = (timeString: string) => {
   if (!timeString) return '--:--';
@@ -57,6 +59,7 @@ const formatTime = (timeString: string) => {
 export default function AgencyDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [agency, setAgency] = useState<Agency | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
@@ -65,16 +68,20 @@ export default function AgencyDetailPage() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab) setActiveTab(tab);
+    if (tab) {
+      setActiveTab(tab);
+    }
 
     const date = searchParams.get('date');
     if (date) setSelectedDate(date);
 
     const openScheduleId = searchParams.get('openSchedule');
-    if (openScheduleId && !loading) {
+    if (openScheduleId && !loading && user) {
       handleScheduleClick(openScheduleId);
+    } else if (openScheduleId && !user) {
+      setIsAuthModalOpen(true);
     }
-  }, [searchParams, loading]);
+  }, [searchParams, loading, user]);
 
   // Backend Data State
   const [overview, setOverview] = useState<any>(null);
@@ -83,6 +90,7 @@ export default function AgencyDetailPage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [currentBusImageIndex, setCurrentBusImageIndex] = useState(0);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleDateChange = (newDate: string) => {
     setSelectedDate(newDate);
@@ -120,6 +128,11 @@ export default function AgencyDetailPage() {
   }, [params.id]);
 
   const handleScheduleClick = async (scheduleId: string) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     try {
       setLoadingDetails(true);
       const data = await getScheduleDetails(scheduleId);
@@ -240,7 +253,9 @@ export default function AgencyDetailPage() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                }}
                 className={`flex items-center gap-3 px-8 py-5 text-sm font-bold transition-all relative ${activeTab === tab.id
                   ? 'text-cyan-600 dark:text-cyan-400'
                   : 'text-gray-400 hover:text-gray-600'
@@ -827,6 +842,11 @@ export default function AgencyDetailPage() {
           </div>
         </div>
       )}
+
+      <AuthPromptModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
   );
 }
