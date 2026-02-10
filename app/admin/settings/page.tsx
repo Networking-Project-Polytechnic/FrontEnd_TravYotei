@@ -82,14 +82,34 @@ export default function SettingsPage() {
     ipWhitelist: "",
   })
 
-  // État paiements
-  const [paymentSettings, setPaymentSettings] = useState({
-    currency: "XAF",
-    commissionRate: "2",
-    paymentGateway: "mobile_money",
-    autoPayoutEnabled: false,
-    minPayoutAmount: "10000",
-  })
+interface PlanPrices {
+  free: string;
+  basic: string;
+  standard: string;
+  premium: string;
+}
+
+interface PaymentSettings {
+  currency: string;
+  paymentGateway: string;
+  autoPayoutEnabled: boolean;
+  minPayoutAmount: string;
+  planPrices: PlanPrices;
+}
+
+// État paiements
+const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
+  currency: "XAF",
+  paymentGateway: "mobile_money",
+  autoPayoutEnabled: false,
+  minPayoutAmount: "10000",
+  planPrices: {
+    free: "0",
+    basic: "5000",
+    standard: "15000",
+    premium: "30000",
+  },
+});
 
   // Simulation de sauvegarde
   const handleSave = () => {
@@ -463,18 +483,19 @@ export default function SettingsPage() {
               <div className="p-6 space-y-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    Paiements
+                    Paiements & Tarification
                   </h2>
                   <p className="text-sm text-gray-600">
-                    Configuration des transactions et commissions
+                    Configurez la devise et les prix de vos abonnements
                   </p>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  {/* Sélecteur de Devise */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Devise
+                        Devise de l'application
                       </label>
                       <select
                         value={paymentSettings.currency}
@@ -491,25 +512,62 @@ export default function SettingsPage() {
                         <option value="EUR">EUR (Euro)</option>
                       </select>
                     </div>
+                    
+                    {/* Placeholder pour l'équilibre visuel ou une autre option */}
+                    <div className="hidden md:block"></div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Taux de commission (%)
-                      </label>
-                      <input
-                        type="number"
-                        value={paymentSettings.commissionRate}
-                        onChange={(e) =>
-                          setPaymentSettings({
-                            ...paymentSettings,
-                            commissionRate: e.target.value,
-                          })
-                        }
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600 "
-                      />
+                  <hr className="border-gray-200" />
+
+                  {/* Nouvelle Section : Tarification des Plans */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Prix des abonnements
+                    </h3>
+                    <div className="space-y-3">
+                      {[
+                        { id: "free" as keyof PlanPrices, label: "Plan Free", color: "bg-gray-100" },
+                        { id: "basic" as keyof PlanPrices, label: "Plan Basic", color: "bg-blue-50" },
+                        { id: "standard" as keyof PlanPrices, label: "Plan Standard", color: "bg-indigo-50" },
+                        { id: "premium" as keyof PlanPrices, label: "Plan Premium", color: "bg-purple-50" },
+                      ].map((plan) => (
+                        <div 
+                          key={plan.id} 
+                          className={`flex flex-col md:flex-row md:items-center justify-between p-4 ${plan.color} rounded-xl border border-gray-200 gap-4 text-gray-600`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-1 bg-blue-600 rounded-full"></div>
+                            <span className="font-bold text-gray-700">{plan.label}</span>
+                          </div>
+                          
+                          <div className="relative flex-1 md:max-w-[200px]">
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={paymentSettings.planPrices?.[plan.id] || ""}
+                              onChange={(e) =>
+                                setPaymentSettings({
+                                  ...paymentSettings,
+                                  planPrices: {
+                                    ...paymentSettings.planPrices,
+                                    [plan.id]: e.target.value,
+                                  },
+                                })
+                              }
+                              className="w-full pl-4 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-right font-mono"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500">
+                              {paymentSettings.currency}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
+                  <hr className="border-gray-200" />
+
+                  {/* Passerelle de paiement */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Passerelle de paiement
@@ -525,10 +583,13 @@ export default function SettingsPage() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
                     >
                       <option value="mobile_money">Mobile Money</option>
-                      <option value="stripe">Orange Money</option>
+                      <option value="orange_money">Orange Money</option>
                       <option value="paypal">PayPal</option>
+                      <option value="stripe">Stripe</option>
                     </select>
                   </div>
+
+                  {/* Toggle Automatique */}
                   <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center gap-3">
                       <DollarSign className="w-5 h-5 text-blue-600" />
