@@ -21,6 +21,8 @@ import {
 } from "@/lib/api"
 import { AgencyLogo } from "@/components/AgencyLogo"
 import Link from "next/link"
+import { useAuth } from "@/context/AuthContext"
+import { AuthPromptModal } from "@/components/AuthPromptModal"
 
 interface EnhancedSchedule extends ScheduleDetails {
     startLocationName?: string;
@@ -42,6 +44,8 @@ export default function SearchContent() {
     const [schedules, setSchedules] = useState<EnhancedSchedule[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+    const { user } = useAuth()
 
     useEffect(() => {
         const fetchResults = async () => {
@@ -223,11 +227,18 @@ export default function SearchContent() {
                                                 )}
                                             </div>
                                         </div>
-                                        <Link href={`/agencies/${schedule.agencyid}?tab=schedule&date=${schedule.date}&openSchedule=${schedule.scheduleid}`}>
-                                            <button className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold text-sm tracking-wide hover:scale-105 transition-transform">
-                                                Select
-                                            </button>
-                                        </Link>
+                                        <button
+                                            onClick={() => {
+                                                if (!user) {
+                                                    setIsAuthModalOpen(true)
+                                                } else {
+                                                    router.push(`/agencies/${schedule.agencyid}?tab=schedule&date=${schedule.date}&openSchedule=${schedule.scheduleid}`)
+                                                }
+                                            }}
+                                            className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold text-sm tracking-wide hover:scale-105 transition-transform"
+                                        >
+                                            Select
+                                        </button>
                                     </div>
                                 </div>
                             </motion.div>
@@ -235,6 +246,12 @@ export default function SearchContent() {
                     </div>
                 )}
             </div>
-        </div>
+
+
+            <AuthPromptModal
+                isOpen={isAuthModalOpen}
+                onClose={() => setIsAuthModalOpen(false)}
+            />
+        </div >
     )
 }

@@ -1,7 +1,7 @@
 // app/context/AuthContext.tsx
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import * as api from '@/lib/api';
 
@@ -20,13 +20,16 @@ interface User {
   licenseNumber?: string;
   createdAt?: string;
   updatedAt?: string;
+  pricingPlan?: string;
+  status?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (userName: string, password: string) => Promise<void>;
+  login: (userName: string, password: string, isAdmin?: boolean) => Promise<void>;
   signup: (userData: any) => Promise<void>;
+  signupAdmin: (userData: { name: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
   refreshProfile: () => Promise<User>;
@@ -39,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const isLoggingOut = useRef(false);
 
   // Refresh profile data from backend
   const refreshProfile = async (): Promise<User> => {
@@ -74,10 +78,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Route protection
   useEffect(() => {
     if (!loading) {
-      const publicRoutes = ['/client-join', '/agency-join', '/', '/agencies', '/agencies/00000000-0000-0000-0000-000000000000', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000000000000'];
+      const publicRoutes = ['/client-join', '/pricing', '/agency-join', '/admin-join', '/', '/agencies', '/agencies/00000000-0000-0000-0000-000000000000', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000123456789'];
+
       const isPublicRoute = publicRoutes.includes(pathname) ||
         pathname.startsWith('/api/') ||
-        pathname.startsWith('/_next/');
+        pathname.startsWith('/_next/') ||
+        pathname.startsWith('/agencies');
+
+      // If we have successfully navigated to a public route, we can lower the logout flag
+      if (isPublicRoute && isLoggingOut.current) {
+        console.log('🔓 [AuthContext] Landed on public route, resetting logout flag');
+        isLoggingOut.current = false;
+      }
 
       console.log('🛡️ [AuthContext] Protection Check:', {
         pathname,
@@ -89,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Check for a flag to suppress automatic redirection (e.g., during onboarding)
       const skipRedirect = typeof window !== 'undefined' && sessionStorage.getItem('skip_auth_redirect') === 'true';
 
-      if (!user && !isPublicRoute) {
+      if (!user && !isPublicRoute && !isLoggingOut.current) {
         const returnUrl = encodeURIComponent(pathname);
         console.log('🔒 [AuthContext] Access Denied: Redirecting to login. Return URL:', returnUrl);
 
@@ -97,10 +109,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const lowerPath = pathname.toLowerCase();
         if (lowerPath.startsWith('/dashboard') || lowerPath.startsWith('/agency')) {
           router.push(`/agency-join?returnUrl=${returnUrl}&mode=signup`);
+        } else if (lowerPath.startsWith('/admin')) {
+          router.push(`/admin-join?returnUrl=${returnUrl}&mode=signup`);
         } else {
           router.push(`/client-join?returnUrl=${returnUrl}&mode=signup`);
         }
-      } else if (user && !skipRedirect && (pathname === '/client-join' || pathname === '/agency-join' || pathname === '/login')) {
+      } else if (user && !skipRedirect && (pathname === '/client-join' || pathname === '/agency-join' || pathname === '/admin-join' || pathname === '/login')) {
         console.log('✅ [AuthContext] Already Authenticated: Redirecting to dashboard...');
         redirectToDashboard(user.role);
       }
@@ -203,11 +217,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         break;
       case 'AGENCY':
       case 'ROLE_AGENCY':
-        router.push('/Dashboard');
+        // Check agency status
+        if (user?.status === 'PENDING') {
+          router.push('/agency/pending');
+          return;
+        } else if (user?.status === 'REJECTED') {
+          router.push('/agency/rejected');
+          return;
+        }
+
+        // Try to redirect to specific agency dashboard if we have the ID
+        if (typeof user === 'object' && user?.id) {
+          router.push(`/Dashboard/${user.id}`);
+        } else {
+          // Fallback if user object isn't fully loaded yet (though it should be)
+          // or if we just have the role string
+          const storedUser = localStorage.getItem('user_data');
+          if (storedUser) {
+            try {
+              const parsedUser = JSON.parse(storedUser);
+              if (parsedUser.status === 'PENDING') {
+                router.push('/agency/pending');
+                return;
+              }
+              if (parsedUser.status === 'REJECTED') {
+                router.push('/agency/rejected');
+                return;
+              }
+              if (parsedUser.id) {
+                router.push(`/Dashboard/${parsedUser.id}`);
+                return;
+              }
+            } catch (e) {
+              console.error('Error parsing stored user for redirect', e);
+            }
+          }
+          router.push('/Dashboard');
+        }
         break;
       case 'ADMIN':
       case 'ROLE_ADMIN':
-        router.push('/admin-dashboard');
+        router.push('/adminDashboard');
         break;
       default:
         console.warn('⚠️ Unknown role in redirectToDashboard, going home:', role);
@@ -215,25 +265,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (userName: string, password: string) => {
+  const login = async (userName: string, password: string, isAdmin?: boolean) => {
+    isLoggingOut.current = false;
     setLoading(true);
-    console.log('🔑 Attempting login for user:', userName);
+    console.log('🔑 Attempting login for user:', userName, 'isAdmin:', isAdmin);
 
     try {
       // 1. Login and get JWT token
-      const loginData = await api.login(userName, password);
+      let loginData;
+      if (isAdmin) {
+        loginData = await api.login_admin(userName, password);
+      } else {
+        loginData = await api.login(userName, password);
+      }
       console.log('✅ Login successful, token received');
 
       // 2. Fetch profile with the new token
       try {
-        const userProfile = await api.fetchUserProfile();
+        let userProfile;
+        if (isAdmin) {
+          const adminProfile: any = await api.fetchAdminProfile();
+          // Map admin profile
+          userProfile = {
+            id: adminProfile.id || 'admin',
+            firstName: userName,
+            lastName: '',
+            email: adminProfile.email || '',
+            userName: userName,
+            role: 'ADMIN',
+          };
+        } else {
+          userProfile = await api.fetchUserProfile();
+        }
+
         console.log('✅ Profile fetched after login:', userProfile);
 
         localStorage.setItem('user_data', JSON.stringify(userProfile));
-        setUser(userProfile);
+        setUser(userProfile as User);
 
         // 3. Redirect to dashboard
-        redirectToDashboard(loginData.role);
+        redirectToDashboard(loginData.role || (isAdmin ? 'ADMIN' : 'USER'));
       } catch (profileError: any) {
         console.error('❌ Profile fetch failed after login:', profileError);
 
@@ -327,36 +398,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
-    console.log('👋 Logging out...');
-
-    // Store the current role before clearing
-    const rawRole = user?.role;
-    const currentRole = rawRole?.toUpperCase()?.replace('ROLE_', '');
+  const signupAdmin = async (userData: { name: string; email: string; password: string }) => {
+    setLoading(true);
+    console.log('📝 Attempting Admin signup for:', userData.name);
 
     try {
-      await api.logout();
-    } catch (error) {
-      console.log('ℹ️ Backend logout not available, clearing frontend only');
-    } finally {
-      clearStorage();
-      setUser(null);
+      // 1. Register (Admin)
+      await api.signup_admin(userData);
+      console.log('✅ Admin registration successful');
 
-      // Redirect based on previous role
-      // We want to go to the SIGNUP page as requested
-      if (currentRole === 'CLIENT') {
-        router.push('/client-join?mode=signup');
-      } else if (currentRole === 'AGENCY') {
-        router.push('/agency-join?mode=signup');
-      } else if (currentRole === 'ADMIN') {
-        router.push('/admin-join?mode=signup');
-      } else {
-        // Default fallback
-        router.push('/client-join?mode=signup');
+      // 2. Login (Admin) to get token
+      const loginData = await api.login_admin(userData.name, userData.password);
+      console.log('✅ Admin login successful, token received');
+
+      // 3. Fetch Profile (Admin)
+      try {
+        const userProfile: any = await api.fetchAdminProfile(); // Use any as structure might differ
+        // Map admin profile to User interface if needed
+        const mappedUser: User = {
+          id: userProfile.id || 'admin',
+          firstName: userData.name, // Mapping 'name' to firstName for context
+          lastName: '',
+          email: userData.email,
+          userName: userData.name,
+          role: 'ADMIN',
+          // Add other fields as optional/undefined
+        };
+
+        console.log('✅ Admin Profile fetched:', mappedUser);
+        localStorage.setItem('user_data', JSON.stringify(mappedUser));
+        setUser(mappedUser);
+
+        // 4. Redirect
+        redirectToDashboard('ADMIN');
+
+      } catch (profileError: any) {
+        console.error('❌ Admin profile fetch failed:', profileError);
+        throw profileError;
       }
 
-      console.log('✅ Logout complete for role:', currentRole);
+    } catch (error) {
+      console.error('❌ Admin Signup error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const logout = async () => {
+    console.log('👋 Logging out...');
+    isLoggingOut.current = true;
+
+    // Prevent route protection from triggering user undefined redirect while we navigate
+    setLoading(true);
+
+    // No backend logout endpoint available, so we just clear frontend storage
+    clearStorage();
+    setUser(null);
+
+    // Redirect to home page as requested
+    router.push('/');
+
+    // Short timeout to ensure navigation starts before we re-enable checks
+    setTimeout(() => {
+      setLoading(false);
+      // Do NOT reset isLoggingOut here. It will be reset when we hit a public route.
+      console.log('✅ Logout complete');
+    }, 2000);
   };
 
   const updateUser = (userData: Partial<User>) => {
@@ -379,6 +487,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       signup,
+      signupAdmin,
       logout,
       updateUser,
       refreshProfile
