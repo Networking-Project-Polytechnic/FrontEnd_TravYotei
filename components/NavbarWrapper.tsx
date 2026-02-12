@@ -11,7 +11,8 @@ const hideNavbarRoutes = [
   '/agency/create-package',
   '/',
   '/login',
-  '/register'
+  '/register',
+  '/admin-join'
 ];
 
 export default function NavbarWrapper() {

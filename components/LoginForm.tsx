@@ -10,9 +10,10 @@ import { toast } from 'sonner';
 
 interface LoginFormProps {
   switchToSignup: () => void;
+  isAdmin?: boolean;
 }
 
-export default function LoginForm({ switchToSignup }: LoginFormProps) {
+export default function LoginForm({ switchToSignup, isAdmin }: LoginFormProps) {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -36,7 +37,7 @@ export default function LoginForm({ switchToSignup }: LoginFormProps) {
     setLoading(true);
 
     try {
-      await login(formData.username, formData.password);
+      await login(formData.username, formData.password, isAdmin);
       toast.success('Login successful!');
       // Redirect is handled by AuthContext
     } catch (err: any) {

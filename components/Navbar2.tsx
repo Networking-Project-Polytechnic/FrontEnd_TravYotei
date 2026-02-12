@@ -62,10 +62,10 @@ export default function NavBar() {
         return '/userDashboard';
       case 'AGENCY':
       case 'ROLE_AGENCY':
-        return '/Dashboard';
+        return user?.id ? `/Dashboard/${user.id}` : '/Dashboard';
       case 'ADMIN':
       case 'ROLE_ADMIN':
-        return '/admin-dashboard';
+        return '/adminDashboard';
       default:
         console.warn('⚠️ Unknown user role, defaulting to login:', user.role);
         return '/client-join';
@@ -88,40 +88,42 @@ export default function NavBar() {
                 </span>
               </Link>
 
-            {/* Navigation Links */}
-            <div className="hidden md:flex ml-10 space-x-8">
-              <Link
-                href="/"
-                className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
-              >
-                Home
-              </Link>
-              <Link
-                href="/agencies"
-                className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
-              >
-                Agencies
-              </Link>
-              <Link
-                href="/pricing"
-                className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/contact"
-                className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
-              >
-                FAQs
-              </Link>
-              <Link
-                href="/contact"
-                className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
-              >
-                Contact
-              </Link>
+              {/* Navigation Links */}
+              <div className="hidden md:flex ml-10 space-x-8">
+                <Link
+                  href="/"
+                  className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
+                >
+                  Home
+                </Link>
+                <Link
+                  href="/agencies"
+                  className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
+                >
+                  Agencies
+                </Link>
+                {(!user || user.role === 'AGENCY' || user.role === 'ROLE_AGENCY') && (
+                  <Link
+                    href="/pricing"
+                    className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
+                  >
+                    Pricing
+                  </Link>
+                )}
+                <Link
+                  href="/contact"
+                  className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
+                >
+                  FAQs
+                </Link>
+                <Link
+                  href="/contact"
+                  className="text-gray-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
+                >
+                  Contact
+                </Link>
+              </div>
             </div>
-          </div>
 
             {/* Right Side Actions */}
             <div className="flex items-center space-x-4">
@@ -160,7 +162,23 @@ export default function NavBar() {
                           <User className="h-6 w-6 text-white" />
                         )}
                       </div>
-                      <span className="font-medium">{user.firstName || user.userName}</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{user.firstName || user.userName}</span>
+                        {(user.role === 'AGENCY' || user.role === 'ROLE_AGENCY') && (
+                          <>
+                            {user.pricingPlan === 'free' && (
+                              <span className="self-start px-2 py-0.5 text-[10px] font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 rounded-full shadow-md transform hover:scale-105 transition-transform duration-200 border border-white/20 mt-0.5">
+                                FREE PLAN
+                              </span>
+                            )}
+                            {user.pricingPlan && user.pricingPlan !== 'free' && (
+                              <span className="self-start px-2 py-0.5 text-[10px] font-bold text-cyan-700 bg-cyan-100 rounded-full border border-cyan-200 mt-0.5">
+                                {user.pricingPlan.toUpperCase()}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <span>Let&apos;s know more about you</span>
@@ -264,24 +282,40 @@ export default function NavBar() {
             </div>
           </div>
 
-        <div className="md:hidden flex justify-between items-center py-4 border-t border-gray-100 dark:border-slate-800">
-          <div className="flex space-x-4">
-            <Link href="/" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Home</Link>
-            <Link href="/agencies" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Agencies</Link>
-            <Link href="/pricing" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Pricing</Link>
-            <Link href="/contact" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Contact</Link>
-          </div>
-          <div className="flex items-center space-x-4">
-            <ThemeToggle />
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="text-gray-700 dark:text-slate-300 hover:text-cyan-600"
-            >
-              Menu
-            </button>
+          <div className="md:hidden flex justify-between items-center py-4 border-t border-gray-100 dark:border-slate-800">
+            <div className="flex space-x-4">
+              <Link href="/" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Home</Link>
+              <Link href="/agencies" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Agencies</Link>
+              <Link href="/pricing" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Pricing</Link>
+              <Link href="/contact" className="text-gray-700 dark:text-slate-300 hover:text-cyan-600">Contact</Link>
+            </div>
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="text-gray-700 dark:text-slate-300 hover:text-cyan-600"
+              >
+                Menu
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+      <UpgradeToAgencyModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        onSuccess={handleUpgradeSuccess}
+      />
+      <ProfilePictureModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onComplete={handleProfileComplete}
+      />
+      <BioModal
+        isOpen={isBioModalOpen}
+        onClose={() => setIsBioModalOpen(false)}
+        onComplete={handleBioComplete}
+      />
+    </>
   );
 }

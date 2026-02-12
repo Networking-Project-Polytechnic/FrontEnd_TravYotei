@@ -8,9 +8,9 @@ export enum Role {
 }
 
 export enum Status {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  PENDING = 'PENDING'
+  APPROVED = 'APPROVED',
+  PENDING = 'PENDING',
+  REJECTED = 'REJECTED'
 }
 
 export type Agency = {
@@ -53,7 +53,7 @@ const mockAgencies: Agency[] = [
     userName: 'parklanetravels',
     email: 'contact@parklanetravels.cm',
     role: Role.AGENCY,
-    status: Status.ACTIVE,
+    status: Status.APPROVED,
     profileImageUrl: '/images/agencies/logos/logoparklane.png',
     phoneNumber: 237683574765,
     address: 'Yaoundé, Cameroun',
@@ -67,7 +67,7 @@ const mockAgencies: Agency[] = [
     userName: 'travyotei-official',
     email: 'contact@travyotei.com',
     role: Role.AGENCY,
-    status: Status.ACTIVE,
+    status: Status.APPROVED,
     profileImageUrl: '/images/agencies/logos/logoparklane.png',
     phoneNumber: 237000000000,
     displayName: 'TravYotei Official',
@@ -99,7 +99,7 @@ const mockAgencies: Agency[] = [
     userName: 'cerisesexpressvip',
     email: 'contact@cerisesexpress.cm',
     role: Role.AGENCY,
-    status: Status.ACTIVE,
+    status: Status.APPROVED,
     profileImageUrl: '/images/agencies/logos/logocerises.jpeg',
     phoneNumber: 237655319301,
     address: 'Yaoundé, Cameroon',
@@ -127,7 +127,7 @@ export async function getAgencies(): Promise<Agency[]> {
         userName: agency.userName || agency.username || 'unknown',
         email: agency.email || '',
         role: (agency.role as Role) || Role.AGENCY,
-        status: (agency.status as Status) || Status.ACTIVE,
+        status: (agency.status as Status) || Status.APPROVED,
         profileImageUrl: agency.profileImageUrl || agency.logo || `/images/agencies/logos/default.png`,
         phoneNumber: Number(agency.phoneNumber || 0),
         address: agency.address || 'Location information not available',
@@ -162,7 +162,7 @@ export async function getAgencyById(id: string): Promise<Agency | null> {
           userName: agency.userName || agency.username || 'unknown',
           email: agency.email || '',
           role: (agency.role as Role) || Role.AGENCY,
-          status: (agency.status as Status) || Status.ACTIVE,
+          status: (agency.status as Status) || Status.APPROVED,
           profileImageUrl: agency.profileImageUrl || agency.logo || `/images/agencies/logos/default.png`,
           phoneNumber: Number(agency.phoneNumber || 0),
           address: agency.address || 'Location information not available',
@@ -195,6 +195,26 @@ const api_auth = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Axios instance for Admin API
+const api_admin = axios.create({
+  baseURL: 'https://administration-service.onrender.com/api/v1/admins',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor for admin API
+api_admin.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Request interceptor: Add JWT token to all requests
 api_auth.interceptors.request.use(
@@ -384,24 +404,41 @@ export const signup_agency = async (userData: {
 };
 
 // Admin register (if you need this separately)
+// Admin register
 export const signup_admin = async (userData: {
-  firstName: string;
-  lastName: string;
-  userName: string;
+  name: string;
   email: string;
   password: string;
-  phoneNumber: number;
-  address: string;
 }) => {
   try {
-    const response = await api_auth.post('/auth/admin/register', userData);
+    const response = await api_admin.post('/register', userData);
+    // response might not contain token if we need to login separately, but let's see.
+    // The prompt says "switch to login...". So register just registers.
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 
-    // Store token and role from response
+// Admin login
+export const login_admin = async (name: string, password: string) => {
+  try {
+    const response = await api_admin.post('/login', { name, password });
     return handleAuthResponse(response);
   } catch (error) {
     throw error;
   }
 };
+
+// Admin profile
+export const fetchAdminProfile = async () => {
+  try {
+    const response = await api_admin.get('/profile');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
 
 // Upgrade client to agency
 export const upgradeToAgency = async (upgradeDetails: {
