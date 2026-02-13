@@ -43,7 +43,7 @@ export default function NavBar() {
 
   const handleBioComplete = async () => {
     setIsBioModalOpen(false);
-    // Final step: Logout and redirect to Agency Login
+    // Final step: Logout and redirect to Agency Login because we need a fresh token with AGENCY role
     await logout();
     router.push('/agency-join?mode=login&upgraded=true');
   };
