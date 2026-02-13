@@ -102,6 +102,18 @@ export default function AgencyDetailPage() {
     }
   };
 
+  const handlePrevDay = () => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() - 1);
+    handleDateChange(date.toISOString().split('T')[0]);
+  };
+
+  const handleNextDay = () => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + 1);
+    handleDateChange(date.toISOString().split('T')[0]);
+  };
+
   useEffect(() => {
     async function initAgency() {
       const agencyId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -347,12 +359,34 @@ export default function AgencyDetailPage() {
                   <div className="w-full lg:w-72 shrink-0">
                     <div className="mb-8">
                       <h3 className="text-sm font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 px-1">Pick a Date</h3>
-                      <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => handleDateChange(e.target.value)}
-                        className="w-full p-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none text-gray-900 dark:text-white font-bold tracking-tight focus:outline-none focus:border-cyan-500 transition-colors"
-                      />
+
+                      <div className="flex items-center gap-2 mb-2">
+                        <button
+                          onClick={handlePrevDay}
+                          className="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                          aria-label="Previous Day"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <input
+                          type="date"
+                          value={selectedDate}
+                          onChange={(e) => handleDateChange(e.target.value)}
+                          className="flex-1 p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-none text-gray-900 dark:text-white font-bold tracking-tight focus:outline-none focus:border-cyan-500 transition-colors text-center"
+                        />
+                        <button
+                          onClick={handleNextDay}
+                          className="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                          aria-label="Next Day"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex justify-between text-xs text-gray-500 px-1">
+                        <button onClick={handlePrevDay} className="hover:text-cyan-500 transition-colors">Previous Day</button>
+                        <button onClick={handleNextDay} className="hover:text-cyan-500 transition-colors">Next Day</button>
+                      </div>
                     </div>
 
 
@@ -729,7 +763,7 @@ export default function AgencyDetailPage() {
                               <History className="w-4 h-4 text-cyan-500" />
                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mileage</span>
                             </div>
-                            <p className="text-lg font-black text-gray-900 dark:text-white">{selectedSchedule.bus?.mileageKm?.toLocaleString()} <span className="text-xs opacity-50">KM</span></p>
+                            <p className="text-lg font-black text-gray-900 dark:text-white">{selectedSchedule.bus?.mileageKm?.toLocaleString()} <span className="text-xs opacity-50">Km/L</span></p>
                           </div>
                         </div>
                       </div>

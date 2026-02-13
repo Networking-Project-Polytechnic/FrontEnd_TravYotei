@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Route protection
   useEffect(() => {
     if (!loading) {
-      const publicRoutes = ['/client-join', '/pricing', '/agency-join', '/admin-join', '/', '/agencies', '/agencies/00000000-0000-0000-0000-000000000000', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000123456789'];
+      const publicRoutes = ['/client-join', '/pricing', '/agency-join', '/admin-join', '/', '/agencies', '/agencies/00000000-0000-0000-0000-000000000000', '/services', '/contact', '/Dashboard/00000000-0000-0000-0000-000123456789', '/search'];
 
       const isPublicRoute = publicRoutes.includes(pathname) ||
         pathname.startsWith('/api/') ||
@@ -257,11 +257,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         break;
       case 'ADMIN':
       case 'ROLE_ADMIN':
+        console.log('👉 Redirecting to Admin Dashboard');
         router.push('/adminDashboard');
         break;
       default:
-        console.warn('⚠️ Unknown role in redirectToDashboard, going home:', role);
-        router.push('/');
+        console.warn('⚠️ Unknown role in redirectToDashboard:', role, 'Normalized:', normalizedRole);
+        // If it's an agency but role string is weird, try to rescue it
+        if (role?.toLowerCase().includes('agency')) {
+          console.log('Rescuing agency redirect based on string inclusion');
+          if (user?.id) router.push(`/Dashboard/${user.id}`);
+          else router.push('/Dashboard');
+        } else {
+          console.warn('Going home');
+          router.push('/');
+        }
     }
   };
 

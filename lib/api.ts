@@ -295,8 +295,9 @@ api_auth.interceptors.response.use(
 
 // Helper function to extract and store auth data
 const handleAuthResponse = (response: any) => {
-  console.log('📡 [api.ts] handleAuthResponse: Received response data:', response.data);
+  console.log('📡 [api.ts] handleAuthResponse: Received response data:', JSON.stringify(response.data, null, 2));
   const { token, role } = response.data;
+  console.log('🧐 [api.ts] Extracted ROLE:', role);
 
   if (token) {
     console.log('💾 [api.ts] handleAuthResponse: Storing token');
@@ -441,6 +442,7 @@ export const fetchAdminProfile = async () => {
 }
 
 // Upgrade client to agency
+// Upgrade client to agency
 export const upgradeToAgency = async (upgradeDetails: {
   firstName?: string;
   lastName?: string;
@@ -452,6 +454,7 @@ export const upgradeToAgency = async (upgradeDetails: {
     console.log('📤 Sending upgrade request:', upgradeDetails);
     const response = await api_auth.post('/user/upgrade-to-agency', upgradeDetails);
     console.log('✅ Upgrade successful:', response.data);
+
     return response.data;
   } catch (error: any) {
     console.error('❌ [API] Upgrade to Agency error:', error);
@@ -469,12 +472,16 @@ export const fetchUserProfile = async () => {
     console.log('📡 [api.ts] fetchUserProfile: Fetching profile from /profile...');
     const response = await api_auth.get('/profile');
     const userData = response.data;
-    console.log('✅ [api.ts] fetchUserProfile: Profile received:', userData);
+    console.log('✅ [api.ts] fetchUserProfile: Profile received:', JSON.stringify(userData, null, 2));
 
     // Check for common data structure variations
     if (userData.user && !userData.role && userData.user.role) {
       console.log('📦 [api.ts] fetchUserProfile: Found role nested in .user property');
       userData.role = userData.user.role;
+    } else if (userData.role) {
+      console.log('✅ [api.ts] fetchUserProfile: Role found at top level:', userData.role);
+    } else {
+      console.warn('⚠️ [api.ts] fetchUserProfile: No role found in profile data!');
     }
 
     return userData;

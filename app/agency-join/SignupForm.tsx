@@ -123,16 +123,20 @@ export default function SignupForm({ switchToLogin }: SignupFormProps) {
         const errorMsg = err.message.toLowerCase();
         if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
           setError('Network error. Please check your connection and try again.');
-        } else if (errorMsg.includes('400') || errorMsg.includes('bad request')) {
-          setError('Invalid form data. Please check all fields and try again.');
-        } else if (errorMsg.includes('409') || errorMsg.includes('conflict')) {
-          setError('Username or email already exists. Please use different credentials.');
+        } else if (errorMsg.includes('400') || errorMsg.includes('bad request') || errorMsg.includes('409') || errorMsg.includes('conflict')) {
+          // Check if it might be an existing user trying to register again
+          if (errorMsg.includes('exist') || errorMsg.includes('already') || err.response?.status === 409) {
+            setError('User already exists. Please Sign In and use "Become a Partner" to upgrade your account.');
+          } else {
+            setError('Invalid form data. Please check all fields and try again.');
+          }
         } else if (errorMsg.includes('500') || errorMsg.includes('server')) {
           setError('Server error. Please try again later.');
         } else {
           setError(err.message || 'Registration failed. Please try again.');
         }
       } else {
+        // Fallback error
         setError('Registration failed. Please try again.');
       }
       console.error('Signup error:', err);
