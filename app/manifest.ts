@@ -10,16 +10,16 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: '#ffffff',
     theme_color: '#000000',
     icons: [
-    //   {
-    //     src: '/PWA-icon/logo.svg',
-    //     sizes: '192x192',
-    //     type: 'image/svg+xml',
-    //   },
       {
-        src: '/PWA-icon/travyotei.jpeg',
-        sizes: '512x512',
-        type: 'image/jpeg',
+        src: '/PWA-icon/logo.svg',
+        sizes: '192x192',
+        type: 'image/svg+xml',
       },
+      // {
+      //   src: '/PWA-icon/travyotei.jpeg',
+      //   sizes: '512x512',
+      //   type: 'image/jpeg',
+      // },
     ],
   }
 }
