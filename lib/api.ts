@@ -802,6 +802,7 @@ export interface Schedule {
   agencyid: string
   priceid: string
   driverid: string
+  status?: string
 }
 
 export interface Bus {
@@ -1818,8 +1819,11 @@ export async function createAssignmentScoped(agencyId: string, assignment: Parti
   // Map frontend agencyId to backend agencyid
   const payload = {
     ...assignment,
+    scheduleid: assignment.scheduleId,
+    driverid: assignment.driverId,
+    busid: assignment.busId,
     agencyid: agencyId,
-    busid: assignment.busId
+    assignmentdate: assignment.assignmentDate,
   };
 
   const response = await fetch(`${API_BASE_URL}/api/v1/assignments/agency/${agencyId}`, {
@@ -1835,8 +1839,11 @@ export async function updateAssignmentScoped(agencyId: string, assignmentId: str
   // Map frontend agencyId to backend agencyid
   const payload = {
     ...assignment,
+    scheduleid: assignment.scheduleId,
+    driverid: assignment.driverId,
+    busid: assignment.busId,
     agencyid: agencyId,
-    busid: assignment.busId // Map busId to busid
+    assignmentdate: assignment.assignmentDate,
   };
 
   const response = await fetch(`${API_BASE_URL}/api/v1/assignments/agency/${agencyId}/${assignmentId}`, {

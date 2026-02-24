@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import * as turf from "@turf/turf"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -37,12 +38,30 @@ import {
   RoutePrice,
   getAssignmentsByAgency,
   updateAssignmentScoped,
+  Assignment,
 } from "@/lib/api"
 import { BusSeatSimulation } from "@/components/BusSeatSimulation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 
 const TRIP_STATUSES = ["SCHEDULED", "DELAYED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
+
+const fetchCoordinates = async (cityName: string) => {
+  try {
+    const response = await fetch(`/api/proxy/nominatim?q=${encodeURIComponent(cityName)}`);
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Geocoding error:", error);
+    return null;
+  }
+};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -136,6 +155,58 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
     }
   }, [selectedPrice?.priceId]); // Use specific ID dependency
 
+  // --- Automatic Status Update Mechanism ---
+  useEffect(() => {
+    const autoUpdateStatuses = async () => {
+      const now = new Date();
+      let hasUpdates = false;
+      const updatedTrips = [...trips];
+
+      for (let i = 0; i < updatedTrips.length; i++) {
+        const trip = updatedTrips[i];
+        if (trip.status === "COMPLETED" || trip.status === "CANCELLED") continue;
+
+        const depTime = new Date(trip.departuretime);
+        const arrTime = trip.arrivaltime ? new Date(trip.arrivaltime) : null;
+
+        let newStatus = trip.status || "SCHEDULED";
+
+        if (arrTime && now >= arrTime) {
+          newStatus = "COMPLETED";
+        } else if (now >= depTime) {
+          newStatus = "IN_PROGRESS";
+        }
+
+        if (newStatus !== trip.status) {
+          try {
+            await updateScheduleScoped(agencyId, trip.scheduleid, { status: newStatus });
+            updatedTrips[i] = { ...trip, status: newStatus };
+            hasUpdates = true;
+            console.log(`[Auto-Update] Trip ${trip.scheduleid} status changed to ${newStatus}`);
+          } catch (err) {
+            console.error(`[Auto-Update] Failed for trip ${trip.scheduleid}:`, err);
+          }
+        }
+      }
+
+      if (hasUpdates) {
+        setTrips(updatedTrips);
+      }
+    };
+
+    // Initial check on load
+    if (trips.length > 0) {
+      autoUpdateStatuses();
+    }
+
+    // Set interval to check every minute
+    const interval = setInterval(() => {
+      autoUpdateStatuses();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [trips.length > 0, agencyId]); // Dependency on trips volume to avoid loops but ensure refresh
+
 
   const resetForm = () => {
     setFormData({
@@ -183,7 +254,7 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
         priceId: trip.priceid || "",
         departureTime: safeToISOString(trip.date, trip.departuretime),
         arrivalTime: safeToISOString(trip.date, trip.arrivaltime),
-        status: "SCHEDULED",
+        status: trip.status || "SCHEDULED",
         isRecurring: false,
         recurringDays: [],
         weeksToRepeat: 1,
@@ -224,6 +295,83 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
       return;
     }
 
+    // --- Time Logic Validations ---
+    const now = new Date();
+    if (!editingId && baseDate < now) {
+      alert("Departure time cannot be in the past.");
+      return;
+    }
+
+    if (formData.arrivalTime) {
+      const arrDate = new Date(formData.arrivalTime);
+      if (arrDate <= baseDate) {
+        alert("Arrival time must be after departure time.");
+        return;
+      }
+
+      // Check for realistic duration
+      const durationMinutes = (arrDate.getTime() - baseDate.getTime()) / (1000 * 60);
+
+      const route = routes.find(r => r.routeid === formData.routeId);
+      if (route) {
+        const startLoc = locations.find(l => l.locationid === route.startlocationid);
+        const endLoc = locations.find(l => l.locationid === route.endlocationid);
+
+        let minDurationMinutes = 30; // Default minimum
+
+        const getCoord = async (loc?: Location): Promise<{ lat: number; lng: number } | null> => {
+          if (!loc) return null;
+          // 1. Try Nominatim first
+          const liveCoords = await fetchCoordinates(loc.locationname);
+          if (liveCoords) return liveCoords;
+
+          // 2. Fallback to DB
+          if (loc.latitude && loc.longitude) {
+            return { lat: loc.latitude, lng: loc.longitude };
+          }
+          return null;
+        };
+
+        const startCoord = await getCoord(startLoc);
+        const endCoord = await getCoord(endLoc);
+
+        if (startCoord && endCoord) {
+          // Dynamic calculation using Turf
+          const distance = turf.distance(
+            [startCoord.lng, startCoord.lat],
+            [endCoord.lng, endCoord.lat],
+            { units: "kilometers" }
+          );
+
+          // Estimated duration at 60km/h (in minutes)
+          const estimatedMinutesAt60kmh = (distance / 60) * 60;
+          minDurationMinutes = Math.max(30, estimatedMinutesAt60kmh * 0.7);
+
+          console.log(`[Turf Validation] Distance: ${distance.toFixed(2)}km, Est: ${estimatedMinutesAt60kmh.toFixed(0)}m, Min: ${minDurationMinutes.toFixed(0)}m`);
+        } else {
+          // Fallback to hardcoded estimates if coordinates are missing
+          const origin = startLoc?.locationname || "";
+          const dest = endLoc?.locationname || "";
+
+          const isBamenda = origin.toLowerCase().includes("bamenda") || dest.toLowerCase().includes("bamenda");
+          const isDouala = origin.toLowerCase().includes("douala") || dest.toLowerCase().includes("douala");
+          const isYaounde = origin.toLowerCase().includes("yaounde") || dest.toLowerCase().includes("yaounde");
+
+          if (isBamenda && (isDouala || isYaounde)) minDurationMinutes = 300; // 5 hours
+          else if (isDouala && isYaounde) minDurationMinutes = 180; // 3 hours
+        }
+
+        if (durationMinutes < minDurationMinutes) {
+          const hours = Math.floor(minDurationMinutes / 60);
+          const mins = Math.round(minDurationMinutes % 60);
+          const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+          alert(`Unrealistic travel time! Based on the distance and typical speeds, this trip should take at least ${timeStr}. Please adjust the arrival time.`);
+          return;
+        }
+      }
+    }
+    // ------------------------------
+
     // Determine dates to create
     const datesToCreate: string[] = [];
     if (!editingId && formData.isRecurring && formData.recurringDays.length > 0) {
@@ -251,6 +399,13 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
     }
 
     try {
+      let finalPriceId = formData.priceId || selectedPrice?.priceId;
+
+      if (!finalPriceId) {
+        alert("Cannot determine the price for this trip. Please ensure a route and bus are selected.");
+        return;
+      }
+
       for (const tripDate of datesToCreate) {
         // 1. Driver Uniqueness Check
         const driverConflict = trips.find(trip =>
@@ -297,10 +452,11 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
           routeid: formData.routeId,
           busid: formData.busId,
           driverid: formData.driverId,
-          priceid: formData.priceId,
+          priceid: finalPriceId,
           departuretime: finalDep.toISOString(),
           arrivaltime: finalArr?.toISOString() || "",
           date: tripDate,
+          status: formData.status,
           agencyid: agencyId,
         }
 
@@ -309,9 +465,7 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
           // Assignment sync logic
           if (formData.driverId) {
             const assignments = await getAssignmentsByAgency(agencyId);
-            const existingAssignment = assignments.find(a =>
-              (a as any).scheduleId === editingId || (a as any).scheduleid === editingId
-            );
+            const existingAssignment = assignments.find(a => a.scheduleId === editingId);
             if (existingAssignment) {
               if (existingAssignment.driverId !== formData.driverId) {
                 await updateAssignmentScoped(agencyId, existingAssignment.assignmentId, {
@@ -333,7 +487,7 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
           }
         } else {
           const newSchedule = await createScheduleScoped(agencyId, payload);
-          const scheduleId = (newSchedule as any).scheduleid || (newSchedule as any).scheduleId;
+          const scheduleId = newSchedule.scheduleid;
 
           if (formData.driverId && newSchedule && scheduleId) {
             try {
@@ -494,22 +648,24 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
                 </div>
 
                 {/* Price Display Section */}
-                <div className="space-y-2">
-                  <Label>Price *</Label>
-                  <div className="p-2 border rounded-md bg-muted/20">
-                    {formData.routeId && formData.busId ? (
-                      selectedPrice ? (
-                        <span className="text-green-600 font-bold">
-                          {selectedPrice.priceAmount} {selectedPrice.currency}
-                        </span>
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                  <div className="space-y-2">
+                    <Label>Standard Price</Label>
+                    <div className="p-2 border rounded-md bg-muted/20">
+                      {formData.routeId && formData.busId ? (
+                        selectedPrice ? (
+                          <span className="text-green-600 font-bold">
+                            {selectedPrice.priceAmount} {selectedPrice.currency}
+                          </span>
+                        ) : (
+                          <span className="text-destructive font-medium text-sm flex items-center gap-2">
+                            ❌ No standard fare configured.
+                          </span>
+                        )
                       ) : (
-                        <span className="text-destructive font-medium text-sm flex items-center gap-2">
-                          ❌ No fare configured for this Route and Bus combination.
-                        </span>
-                      )
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Select Route and Bus to see price</span>
-                    )}
+                        <span className="text-muted-foreground text-sm">Select Route and Bus to see price</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -521,6 +677,7 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
                       type="datetime-local"
                       value={formData.departureTime}
                       onChange={(e) => setFormData({ ...formData, departureTime: e.target.value })}
+                      min={!editingId ? new Date().toISOString().slice(0, 16) : undefined}
                       required
                     />
                   </div>
@@ -531,6 +688,7 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
                       type="datetime-local"
                       value={formData.arrivalTime}
                       onChange={(e) => setFormData({ ...formData, arrivalTime: e.target.value })}
+                      min={!editingId ? (formData.departureTime || new Date().toISOString().slice(0, 16)) : undefined}
                     />
                   </div>
                 </div>
@@ -690,6 +848,7 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
                   <TableHead>Driver</TableHead>
                   <TableHead>Departure</TableHead>
                   <TableHead>Arrival</TableHead>
+                  <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -724,8 +883,16 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
                           </div>
                         ) : "—"}
                       </TableCell>
+                      <TableCell className="font-bold text-cyan-600">
+                        {(() => {
+                          const price = prices.find(p => p.priceId === trip.priceid);
+                          return price ? `${price.priceAmount.toLocaleString()} ${price.currency}` : "—";
+                        })()}
+                      </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor("SCHEDULED")}>Scheduled</Badge>
+                        <Badge className={getStatusColor(trip.status || "SCHEDULED")}>
+                          {(trip.status || "SCHEDULED").charAt(0) + (trip.status || "SCHEDULED").slice(1).toLowerCase().replace("_", " ")}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -783,6 +950,6 @@ export function TripManagement({ agencyId }: { agencyId: string }) {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }
