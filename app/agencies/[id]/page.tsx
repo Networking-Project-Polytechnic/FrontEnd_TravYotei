@@ -431,11 +431,15 @@ export default function AgencyDetailPage() {
                           const price = overview.routePrices?.find((p: RoutePrice) => p.priceId === schedule.priceid);
                           const bus = overview.buses?.find((b: BusType) => b.busId === schedule.busid);
 
+                          const isPast = new Date(selectedDate) < new Date(new Date().setHours(0, 0, 0, 0));
+
                           return (
                             <button
                               key={schedule.scheduleid}
                               onClick={() => handleScheduleClick(schedule.scheduleid)}
-                              className="group w-full grid grid-cols-1 md:grid-cols-5 items-center gap-6 p-6 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 hover:border-cyan-500/50 transition-all text-left"
+                              disabled={isPast}
+                              className={`group w-full grid grid-cols-1 md:grid-cols-5 items-center gap-6 p-6 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 transition-all text-left ${isPast ? 'grayscale opacity-60 pointer-events-none' : 'hover:border-cyan-500/50'
+                                }`}
                             >
                               <div className="flex flex-col">
                                 <span className="text-3xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">
